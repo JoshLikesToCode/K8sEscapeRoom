@@ -1,2 +1,234 @@
 # K8sEscapeRoom
-A scenario-driven Kubernetes incident lab where pods break, clusters misbehave, and you debug your way out.
+
+A scenario-driven Kubernetes "escape room" where engineers debug real cluster failure modes to sharpen their troubleshooting skills.
+
+## What is K8sEscapeRoom?
+
+K8sEscapeRoom presents you with intentionally broken Kubernetes deployments. Your mission: diagnose the problem using `kubectl` and fix it to "escape" each room.
+
+Each room represents a common Kubernetes failure pattern:
+- **CrashLoopBackOff** - Pods crashing on startup
+- **ImagePullBackOff** - Container images that can't be pulled
+- **Pending** - Pods that can't be scheduled
+
+This is **not** a simulation. You work with a real Kubernetes cluster (via kind) and use real tools.
+
+## Why?
+
+Kubernetes troubleshooting is a critical skill that's hard to practice without experiencing real failures. K8sEscapeRoom provides:
+
+- **Safe practice environment** - Break things without consequences
+- **Real tooling** - Use actual `kubectl` commands, not abstractions
+- **Progressive hints** - Learn at your own pace
+- **Reproducible scenarios** - Reset and retry as needed
+
+## Prerequisites
+
+| Tool | Version | Installation |
+|------|---------|--------------|
+| Docker | 20.10+ | [Get Docker](https://docs.docker.com/get-docker/) |
+| kind | 0.20+ | [Install kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) |
+| kubectl | 1.28+ | [Install kubectl](https://kubernetes.io/docs/tasks/tools/) |
+| .NET 8 | (optional) | [Download .NET](https://dotnet.microsoft.com/download) |
+
+Verify your setup:
+```bash
+make tools-check
+```
+
+## Quickstart
+
+```bash
+# 1. Create the cluster
+make cluster-up
+
+# 2. See available rooms
+make room-list
+
+# 3. Enter your first escape room
+make room-apply ROOM=room-crashloop-env
+
+# 4. Investigate!
+kubectl get pods -n escape-room-crashloop-env
+kubectl describe pod escape-app -n escape-room-crashloop-env
+kubectl logs escape-app -n escape-room-crashloop-env
+
+# 5. When stuck, get help
+make room-objective ROOM=room-crashloop-env  # What to achieve
+make room-hint ROOM=room-crashloop-env       # Progressive hints
+make room-solution ROOM=room-crashloop-env   # Full solution
+
+# 6. Reset and try again (or move to next room)
+make room-reset ROOM=room-crashloop-env
+```
+
+## Available Rooms
+
+| Room | Failure Mode | Difficulty |
+|------|--------------|------------|
+| `room-crashloop-env` | CrashLoopBackOff - Missing environment variable | Beginner |
+| `room-imagepullbackoff` | ImagePullBackOff - Invalid image tag | Beginner |
+| `room-pending-resources` | Pending - Resource requests exceed capacity | Beginner |
+
+## Commands Reference
+
+### Makefile Targets
+
+```bash
+make help              # Show all available commands
+make tools-check       # Verify prerequisites are installed
+make cluster-up        # Create the kind cluster
+make cluster-down      # Delete the kind cluster
+make cluster-status    # Show cluster status
+make room-list         # List all available rooms
+make room-apply ROOM=<name>      # Enter a room (apply broken state)
+make room-reset ROOM=<name>      # Reset a room (delete resources)
+make room-test ROOM=<name>       # Validate room is in expected state
+make room-objective ROOM=<name>  # Show room objective
+make room-hint ROOM=<name>       # Show hints
+make room-solution ROOM=<name>   # Show solution
+```
+
+### CLI (Optional)
+
+If you have .NET 8 installed:
+
+```bash
+# Build the CLI
+dotnet build src/K8sEscapeRoom.Cli
+
+# Run via dotnet
+dotnet run --project src/K8sEscapeRoom.Cli -- room list
+dotnet run --project src/K8sEscapeRoom.Cli -- cluster up
+dotnet run --project src/K8sEscapeRoom.Cli -- room apply room-crashloop-env
+
+# Or install globally
+dotnet tool install --global --add-source ./src/K8sEscapeRoom.Cli K8sEscapeRoom.Cli
+escape room list
+```
+
+## kubectl Debugging Cheat Sheet
+
+### Pod Status Investigation
+
+```bash
+# Overview of pods
+kubectl get pods -n <namespace>
+kubectl get pods -n <namespace> -o wide  # More details
+
+# Detailed pod information
+kubectl describe pod <pod-name> -n <namespace>
+
+# Container logs
+kubectl logs <pod-name> -n <namespace>
+kubectl logs <pod-name> -n <namespace> --previous  # Previous container logs
+kubectl logs <pod-name> -n <namespace> -f          # Follow/stream logs
+```
+
+### Common Status Meanings
+
+| Status | Meaning | First Steps |
+|--------|---------|-------------|
+| `Pending` | Pod cannot be scheduled | Check events, node resources, taints |
+| `ContainerCreating` | Image pulling or volume mounting | Check image name, secrets, PVCs |
+| `Running` | Container is running | Check logs if behavior is wrong |
+| `CrashLoopBackOff` | Container keeps crashing | Check logs, describe pod |
+| `ImagePullBackOff` | Cannot pull container image | Check image name, registry auth |
+| `Error` | Container exited with error | Check logs for error message |
+
+### Resource Investigation
+
+```bash
+# Node capacity and allocation
+kubectl describe nodes
+kubectl top nodes  # Requires metrics-server
+
+# Events (cluster-wide or namespaced)
+kubectl get events -n <namespace> --sort-by='.lastTimestamp'
+
+# Resource usage
+kubectl top pods -n <namespace>  # Requires metrics-server
+```
+
+### Quick Fixes
+
+```bash
+# Delete and recreate a pod
+kubectl delete pod <pod-name> -n <namespace>
+kubectl apply -f <manifest.yaml>
+
+# Edit a resource directly (opens in $EDITOR)
+kubectl edit pod <pod-name> -n <namespace>
+
+# Quick pod creation for testing
+kubectl run test --image=nginx --rm -it -- /bin/sh
+```
+
+## Project Structure
+
+```
+K8sEscapeRoom/
+├── Makefile                 # Primary interface for all commands
+├── scripts/                 # Bash scripts for automation
+│   ├── tools-check.sh       # Verify prerequisites
+│   ├── kind-create.sh       # Create kind cluster
+│   ├── kind-delete.sh       # Delete kind cluster
+│   ├── room-apply.sh        # Apply a room's broken state
+│   ├── room-reset.sh        # Reset a room
+│   └── room-test.sh         # Test room is in expected state
+├── kind/
+│   └── cluster.yaml         # Kind cluster configuration
+├── rooms/                   # Escape room definitions
+│   └── room-<name>/
+│       ├── app.yaml         # Kubernetes manifests (broken)
+│       ├── OBJECTIVE.md     # What you need to achieve
+│       ├── HINTS.md         # Progressive hints
+│       ├── SOLUTION.md      # Full solution
+│       └── tests.sh         # Validation script
+├── src/
+│   └── K8sEscapeRoom.Cli/   # Optional .NET CLI wrapper
+└── .github/workflows/
+    └── ci.yml               # CI pipeline
+```
+
+## Creating New Rooms
+
+1. Create a new directory under `rooms/`:
+   ```bash
+   mkdir rooms/room-my-scenario
+   ```
+
+2. Create the required files:
+   - `app.yaml` - Kubernetes manifest with the intentional bug
+   - `OBJECTIVE.md` - Clear description of what success looks like
+   - `HINTS.md` - Progressive hints (Level 1-4)
+   - `SOLUTION.md` - Complete diagnosis and fix
+   - `tests.sh` - Script to validate the broken state
+
+3. Test your room:
+   ```bash
+   make room-apply ROOM=room-my-scenario
+   make room-test ROOM=room-my-scenario
+   ```
+
+## Philosophy
+
+- **Real Kubernetes** - No simulations or mocks
+- **kubectl is the interface** - We don't hide Kubernetes from you
+- **Learn by doing** - Hands-on troubleshooting builds muscle memory
+- **Progressive disclosure** - Hints guide without giving away answers
+- **Reproducible** - Every scenario can be reset and retried
+
+## Contributing
+
+Contributions welcome! Ideas for new rooms:
+- NetworkPolicy blocking traffic
+- ConfigMap/Secret mounting failures
+- Liveness/Readiness probe failures
+- PersistentVolumeClaim issues
+- Service selector mismatches
+- Init container failures
+
+## License
+
+MIT

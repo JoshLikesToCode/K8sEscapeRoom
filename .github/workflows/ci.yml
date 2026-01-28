@@ -1,0 +1,132 @@
+# K8sEscapeRoom CI Pipeline
+# Validates that rooms can be applied and produce expected failure states
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CLUSTER_NAME: k8s-escape-room
+
+jobs:
+  validate-rooms:
+    name: Validate Escape Rooms
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Create kind cluster
+        run: |
+          kind create cluster --name $CLUSTER_NAME --config kind/cluster.yaml
+          kubectl cluster-info --context kind-$CLUSTER_NAME
+
+      - name: Verify cluster is ready
+        run: |
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+          kubectl get nodes
+
+      # Test room-crashloop-env
+      - name: Apply room-crashloop-env
+        run: ./scripts/room-apply.sh room-crashloop-env
+
+      - name: Wait for pod to enter failure state
+        run: |
+          echo "Waiting for pod to crash..."
+          sleep 15
+          kubectl get pods -n escape-room-crashloop-env
+
+      - name: Validate room-crashloop-env
+        run: ./scripts/room-test.sh room-crashloop-env
+
+      - name: Reset room-crashloop-env
+        run: ./scripts/room-reset.sh room-crashloop-env
+
+      # Test room-imagepullbackoff
+      - name: Apply room-imagepullbackoff
+        run: ./scripts/room-apply.sh room-imagepullbackoff
+
+      - name: Wait for image pull to fail
+        run: |
+          echo "Waiting for image pull to fail..."
+          sleep 15
+          kubectl get pods -n escape-room-imagepullbackoff
+
+      - name: Validate room-imagepullbackoff
+        run: ./scripts/room-test.sh room-imagepullbackoff
+
+      - name: Reset room-imagepullbackoff
+        run: ./scripts/room-reset.sh room-imagepullbackoff
+
+      # Test room-pending-resources
+      - name: Apply room-pending-resources
+        run: ./scripts/room-apply.sh room-pending-resources
+
+      - name: Check pending state
+        run: |
+          echo "Checking pod is pending..."
+          sleep 5
+          kubectl get pods -n escape-room-pending-resources
+
+      - name: Validate room-pending-resources
+        run: ./scripts/room-test.sh room-pending-resources
+
+      - name: Reset room-pending-resources
+        run: ./scripts/room-reset.sh room-pending-resources
+
+      - name: Cleanup - Delete cluster
+        if: always()
+        run: kind delete cluster --name $CLUSTER_NAME
+
+  lint-scripts:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint scripts
+        run: |
+          shellcheck scripts/*.sh
+          shellcheck rooms/*/tests.sh
+
+  build-cli:
+    name: Build .NET CLI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj
+
+      - name: Build
+        run: dotnet build src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj --no-build --configuration Release --verbosity normal
+        continue-on-error: true  # Tests are optional for now

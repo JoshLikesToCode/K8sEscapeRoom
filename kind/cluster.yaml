@@ -1,0 +1,22 @@
+# Kind cluster configuration for K8sEscapeRoom
+# This creates a minimal cluster suitable for debugging exercises
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+
+# Single control-plane node is sufficient for our escape rooms
+nodes:
+  - role: control-plane
+    # Limit resources to create realistic constraint scenarios
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            # These settings help demonstrate resource-based failures
+            system-reserved: memory=512Mi
+            kube-reserved: memory=512Mi
+
+# Networking configuration
+networking:
+  # Use default CNI
+  disableDefaultCNI: false
