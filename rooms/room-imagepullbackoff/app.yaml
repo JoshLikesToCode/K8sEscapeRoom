@@ -5,8 +5,16 @@ kind: Pod
 metadata:
   name: escape-app
   labels:
-    app: escape-app
-    room: imagepullbackoff
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    # K8sEscapeRoom labels
+    k8sescaperoom.dev/room: room-imagepullbackoff
+    k8sescaperoom.dev/difficulty: beginner
+    k8sescaperoom.dev/failure-mode: ImagePullBackOff
+  annotations:
+    k8sescaperoom.dev/description: "Pod cannot pull image due to invalid tag"
 spec:
   containers:
     - name: app

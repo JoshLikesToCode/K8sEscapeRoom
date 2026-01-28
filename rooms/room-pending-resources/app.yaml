@@ -5,8 +5,16 @@ kind: Pod
 metadata:
   name: escape-app
   labels:
-    app: escape-app
-    room: pending-resources
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    # K8sEscapeRoom labels
+    k8sescaperoom.dev/room: room-pending-resources
+    k8sescaperoom.dev/difficulty: beginner
+    k8sescaperoom.dev/failure-mode: Pending
+  annotations:
+    k8sescaperoom.dev/description: "Pod stuck pending due to excessive resource requests"
 spec:
   containers:
     - name: app

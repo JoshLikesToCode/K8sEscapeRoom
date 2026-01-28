@@ -5,8 +5,16 @@ kind: Pod
 metadata:
   name: escape-app
   labels:
-    app: escape-app
-    room: crashloop-env
+    # Kubernetes recommended labels
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    # K8sEscapeRoom labels
+    k8sescaperoom.dev/room: room-crashloop-env
+    k8sescaperoom.dev/difficulty: beginner
+    k8sescaperoom.dev/failure-mode: CrashLoopBackOff
+  annotations:
+    k8sescaperoom.dev/description: "Pod crashes due to missing environment variable"
 spec:
   containers:
     - name: app
