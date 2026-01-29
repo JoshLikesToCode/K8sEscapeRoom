@@ -14,19 +14,40 @@ YELLOW := \033[0;33m
 RED := \033[0;31m
 NC := \033[0m # No Color
 
+# Required files for a valid room (per RoomContract.md)
+REQUIRED_FILES := app.yaml OBJECTIVE.md HINTS.md SOLUTION.md tests.sh
+
+##@ General
 .PHONY: help
-help: ## Show this help message
+help: ## Show all available commands
 	@echo -e "$(CYAN)K8sEscapeRoom$(NC) - Debug Kubernetes failures to escape each room"
 	@echo ""
 	@echo "Usage: make [target] [ROOM=<room-name>]"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
+	@echo -e "$(YELLOW)General:$(NC)"
+	@echo -e "  $(GREEN)help$(NC)                       Show all available commands"
+	@echo -e "  $(GREEN)tools-check$(NC)                Verify prerequisites are installed"
+	@echo ""
+	@echo -e "$(YELLOW)Cluster:$(NC)"
+	@echo -e "  $(GREEN)cluster-up$(NC)                 Create the kind cluster"
+	@echo -e "  $(GREEN)cluster-down$(NC)               Delete the kind cluster"
+	@echo -e "  $(GREEN)cluster-status$(NC)             Show cluster status"
+	@echo ""
+	@echo -e "$(YELLOW)Rooms:$(NC)"
+	@echo -e "  $(GREEN)room-list$(NC)                  List all available rooms"
+	@echo -e "  $(GREEN)room-apply ROOM=<name>$(NC)     Enter a room (apply broken state)"
+	@echo -e "  $(GREEN)room-reset ROOM=<name>$(NC)     Reset a room (delete resources)"
+	@echo -e "  $(GREEN)room-test ROOM=<name>$(NC)      Validate room is in expected state"
+	@echo -e "  $(GREEN)room-objective ROOM=<name>$(NC) Show room objective"
+	@echo -e "  $(GREEN)room-hint ROOM=<name>$(NC)      Show hints"
+	@echo -e "  $(GREEN)room-solution ROOM=<name>$(NC)  Show solution"
 
+##@ General
 .PHONY: tools-check
-tools-check: ## Check that required tools are installed
+tools-check: ## Verify prerequisites are installed
 	@./scripts/tools-check.sh
 
+##@ Cluster
 .PHONY: cluster-up
 cluster-up: ## Create the kind cluster
 	@./scripts/kind-create.sh $(CLUSTER_NAME)
@@ -44,6 +65,7 @@ cluster-status: ## Show cluster status
 		echo -e "$(YELLOW)Cluster '$(CLUSTER_NAME)' is not running$(NC)"; \
 	fi
 
+##@ Rooms
 .PHONY: room-list
 room-list: ## List all available rooms
 	@echo -e "$(CYAN)Available Escape Rooms:$(NC)"
@@ -59,19 +81,19 @@ room-list: ## List all available rooms
 	done
 
 .PHONY: room-apply
-room-apply: _check-room ## Apply a room's broken state (ROOM=<name>)
+room-apply: _check-room _check-room-files ## Enter a room (apply broken state)
 	@./scripts/room-apply.sh $(ROOM)
 
 .PHONY: room-reset
-room-reset: _check-room ## Reset a room (remove its resources) (ROOM=<name>)
+room-reset: _check-room ## Reset a room (delete resources)
 	@./scripts/room-reset.sh $(ROOM)
 
 .PHONY: room-test
-room-test: _check-room ## Run tests for a room (ROOM=<name>)
+room-test: _check-room _check-room-files ## Validate room is in expected state
 	@./scripts/room-test.sh $(ROOM)
 
 .PHONY: room-objective
-room-objective: _check-room ## Show a room's objective (ROOM=<name>)
+room-objective: _check-room ## Show room objective
 	@if [ -f "rooms/$(ROOM)/OBJECTIVE.md" ]; then \
 		cat "rooms/$(ROOM)/OBJECTIVE.md"; \
 	else \
@@ -80,7 +102,7 @@ room-objective: _check-room ## Show a room's objective (ROOM=<name>)
 	fi
 
 .PHONY: room-hint
-room-hint: _check-room ## Show hints for a room (ROOM=<name> LEVEL=1|2|3)
+room-hint: _check-room ## Show hints
 	@if [ -f "rooms/$(ROOM)/HINTS.md" ]; then \
 		cat "rooms/$(ROOM)/HINTS.md"; \
 	else \
@@ -89,7 +111,7 @@ room-hint: _check-room ## Show hints for a room (ROOM=<name> LEVEL=1|2|3)
 	fi
 
 .PHONY: room-solution
-room-solution: _check-room ## Show solution for a room (ROOM=<name>)
+room-solution: _check-room ## Show solution
 	@if [ -f "rooms/$(ROOM)/SOLUTION.md" ]; then \
 		cat "rooms/$(ROOM)/SOLUTION.md"; \
 	else \
@@ -97,26 +119,66 @@ room-solution: _check-room ## Show solution for a room (ROOM=<name>)
 		exit 1; \
 	fi
 
+##@ Internal
 .PHONY: _check-room
 _check-room:
 ifndef ROOM
-	$(error ROOM is not set. Usage: make <target> ROOM=<room-name>)
+	@echo -e "$(RED)Error: ROOM is not set$(NC)"
+	@echo ""
+	@echo "Usage: make <target> ROOM=<room-name>"
+	@echo ""
+	@echo "Example:"
+	@echo "  make room-apply ROOM=room-crashloop-env"
+	@echo ""
+	@echo "Run 'make room-list' to see available rooms."
+	@exit 1
 endif
 	@if [ ! -d "rooms/$(ROOM)" ]; then \
 		echo -e "$(RED)Error: Room '$(ROOM)' does not exist$(NC)"; \
-		echo "Run 'make room-list' to see available rooms"; \
+		echo ""; \
+		echo "Did you mean one of these?"; \
+		for room in rooms/room-*/; do \
+			echo "  $$(basename $$room)"; \
+		done; \
+		echo ""; \
+		echo "Run 'make room-list' for details."; \
 		exit 1; \
 	fi
 
-# CI targets
+.PHONY: _check-room-files
+_check-room-files:
+	@missing=""; \
+	for file in $(REQUIRED_FILES); do \
+		if [ ! -f "rooms/$(ROOM)/$$file" ]; then \
+			missing="$$missing $$file"; \
+		fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		echo -e "$(RED)Error: Room '$(ROOM)' is incomplete$(NC)"; \
+		echo ""; \
+		echo "Missing required files:"; \
+		for file in $$missing; do \
+			echo -e "  $(RED)✗$(NC) $$file"; \
+		done; \
+		echo ""; \
+		echo "See docs/RoomContract.md for room requirements."; \
+		exit 1; \
+	fi; \
+	if [ ! -x "rooms/$(ROOM)/tests.sh" ]; then \
+		echo -e "$(RED)Error: tests.sh is not executable$(NC)"; \
+		echo ""; \
+		echo "Fix with: chmod +x rooms/$(ROOM)/tests.sh"; \
+		exit 1; \
+	fi
+
+##@ CI (internal)
 .PHONY: ci-test
-ci-test: tools-check cluster-up ## Run CI tests (creates cluster, applies room, validates)
+ci-test: tools-check cluster-up
 	@echo -e "$(CYAN)Running CI tests...$(NC)"
 	@./scripts/room-apply.sh room-crashloop-env
-	@sleep 10  # Allow time for pod to enter failure state
 	@./scripts/room-test.sh room-crashloop-env
 	@echo -e "$(GREEN)CI tests passed!$(NC)"
 
 .PHONY: ci-cleanup
-ci-cleanup: cluster-down ## Clean up CI resources
+ci-cleanup: cluster-down
 	@echo -e "$(GREEN)CI cleanup complete$(NC)"
