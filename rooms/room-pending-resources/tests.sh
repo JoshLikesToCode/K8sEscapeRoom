@@ -1,65 +1,130 @@
 #!/usr/bin/env bash
-# tests.sh - Validate that room-pending-resources is in the expected failure state
+# tests.sh - Validate room-pending-resources is in expected failure state
+#
+# Expected state: Pod stuck in Pending due to excessive resource requests
+#
+# Success criteria:
+#   - Pod exists
+#   - Pod is in Pending phase (not scheduled)
+#   - Events mention insufficient resources
+#   - Resource requests are excessive (64Gi memory, 32 CPU)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
+
+# Configuration
 NAMESPACE="${NAMESPACE:-escape-room-pending-resources}"
 POD_NAME="escape-app"
+ROOM_NAME="room-pending-resources"
+EXPECTED_MEMORY="64Gi"
+EXPECTED_CPU="32"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-echo "Testing room: room-pending-resources"
-echo "Namespace: $NAMESPACE"
+echo -e "${CYAN}Testing room: ${ROOM_NAME}${NC}"
+echo -e "${DIM}Namespace: ${NAMESPACE}${NC}"
+echo -e "${DIM}Expected: Pending (insufficient resources)${NC}"
 echo ""
 
+# ============================================================================
 # Test 1: Pod exists
-echo -n "Test 1: Pod '$POD_NAME' exists... "
-if kubectl get pod "$POD_NAME" -n "$NAMESPACE" &> /dev/null; then
-    echo -e "${GREEN}PASS${NC}"
+# ============================================================================
+test_start "Pod '$POD_NAME' exists"
+
+if assert_pod_exists "$POD_NAME" "$NAMESPACE"; then
+    test_pass
 else
-    echo -e "${RED}FAIL${NC}"
-    echo "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
-    exit 1
+    test_fail "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
 fi
 
-# Test 2: Pod is in Pending state
-echo -n "Test 2: Pod is in Pending state... "
-POD_STATUS=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.phase}')
+# ============================================================================
+# Test 2: Pod is in Pending phase
+# ============================================================================
+test_start "Pod is in Pending phase"
 
-if [ "$POD_STATUS" = "Pending" ]; then
-    echo -e "${GREEN}PASS${NC}"
-elif [ "$POD_STATUS" = "Running" ]; then
-    echo -e "${RED}FAIL${NC}"
-    echo "Pod is Running - this room should have the pod stuck in Pending"
-    exit 1
+pod_phase=$(get_pod_phase "$POD_NAME" "$NAMESPACE")
+
+if [ "$pod_phase" = "Pending" ]; then
+    test_pass
+elif [ "$pod_phase" = "Running" ]; then
+    dump_debug_info "$NAMESPACE"
+    test_fail "Pod is Running - expected Pending (unschedulable)"
 else
-    echo -e "${YELLOW}WARN${NC} (Status: $POD_STATUS)"
+    test_warn "Unexpected phase: $pod_phase"
 fi
 
-# Test 3: Verify the reason is resource-related
-echo -n "Test 3: Scheduler shows resource failure... "
-EVENTS=$(kubectl describe pod "$POD_NAME" -n "$NAMESPACE" 2>/dev/null || echo "")
+# ============================================================================
+# Test 3: Events mention scheduling failure
+# ============================================================================
+test_start "Events show FailedScheduling with resource issue"
 
-if echo "$EVENTS" | grep -qE "(Insufficient memory|Insufficient cpu|FailedScheduling)"; then
-    echo -e "${GREEN}PASS${NC}"
+# Look for various resource-related scheduling failures
+if assert_event_contains "$NAMESPACE" "(Insufficient memory|Insufficient cpu|FailedScheduling|nodes are available)"; then
+    # Get the actual message for display
+    event_msg=$(kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' \
+        -o jsonpath='{.items[*].message}' 2>/dev/null | tr ' ' '\n' | grep -iE "(insufficient|failed)" | head -1 || echo "")
+    if [ -n "$event_msg" ]; then
+        test_pass "FailedScheduling detected"
+    else
+        test_pass
+    fi
 else
-    echo -e "${YELLOW}WARN${NC} (Could not verify scheduler message)"
+    test_warn "Could not find resource-related scheduling failure in events"
 fi
 
-# Test 4: Verify resource requests are excessive
-echo -n "Test 4: Resource requests are excessive... "
-MEMORY_REQUEST=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].resources.requests.memory}')
-CPU_REQUEST=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].resources.requests.cpu}')
+# ============================================================================
+# Test 4: Resource requests are excessive
+# ============================================================================
+test_start "Memory request is $EXPECTED_MEMORY"
 
-# Check if memory is in Gi and >= 64
-if [ "$MEMORY_REQUEST" = "64Gi" ] && [ "$CPU_REQUEST" = "32" ]; then
-    echo -e "${GREEN}PASS${NC} (Memory: $MEMORY_REQUEST, CPU: $CPU_REQUEST)"
+actual_memory=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.containers[0].resources.requests.memory}' 2>/dev/null || echo "")
+
+if [ "$actual_memory" = "$EXPECTED_MEMORY" ]; then
+    test_pass
 else
-    echo -e "${YELLOW}WARN${NC} (Memory: $MEMORY_REQUEST, CPU: $CPU_REQUEST)"
+    if [ -n "$actual_memory" ]; then
+        dump_debug_info "$NAMESPACE"
+        test_fail "Memory request is '$actual_memory' - expected '$EXPECTED_MEMORY'"
+    else
+        test_warn "Could not determine memory request"
+    fi
 fi
 
-echo ""
-echo -e "${GREEN}All critical tests passed!${NC}"
-echo "Room is in expected failure state."
+# ============================================================================
+# Test 5: CPU requests are excessive
+# ============================================================================
+test_start "CPU request is $EXPECTED_CPU"
+
+actual_cpu=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.containers[0].resources.requests.cpu}' 2>/dev/null || echo "")
+
+if [ "$actual_cpu" = "$EXPECTED_CPU" ]; then
+    test_pass
+else
+    if [ -n "$actual_cpu" ]; then
+        dump_debug_info "$NAMESPACE"
+        test_fail "CPU request is '$actual_cpu' - expected '$EXPECTED_CPU'"
+    else
+        test_warn "Could not determine CPU request"
+    fi
+fi
+
+# ============================================================================
+# Test 6: Pod has no node assigned (confirming it's unscheduled)
+# ============================================================================
+test_start "Pod has no node assigned"
+
+node_name=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.nodeName}' 2>/dev/null || echo "")
+
+if [ -z "$node_name" ]; then
+    test_pass "no nodeName set"
+else
+    dump_debug_info "$NAMESPACE"
+    test_fail "Pod is assigned to node '$node_name' - should be unschedulable"
+fi
+
+# ============================================================================
+# Summary
+# ============================================================================
+finish_tests

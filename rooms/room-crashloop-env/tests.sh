@@ -1,69 +1,99 @@
 #!/usr/bin/env bash
-# tests.sh - Validate that room-crashloop-env is in the expected failure state
-# This script is used by CI to verify the room was applied correctly
+# tests.sh - Validate room-crashloop-env is in expected failure state
+#
+# Expected state: Pod in CrashLoopBackOff due to missing DATABASE_URL env var
+#
+# Success criteria:
+#   - Pod exists
+#   - Container is in CrashLoopBackOff OR has restarts > 0
+#   - Logs mention DATABASE_URL
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
+
+# Configuration
 NAMESPACE="${NAMESPACE:-escape-room-crashloop-env}"
 POD_NAME="escape-app"
+ROOM_NAME="room-crashloop-env"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-echo "Testing room: room-crashloop-env"
-echo "Namespace: $NAMESPACE"
+echo -e "${CYAN}Testing room: ${ROOM_NAME}${NC}"
+echo -e "${DIM}Namespace: ${NAMESPACE}${NC}"
+echo -e "${DIM}Expected: CrashLoopBackOff (missing DATABASE_URL)${NC}"
 echo ""
 
+# ============================================================================
 # Test 1: Pod exists
-echo -n "Test 1: Pod '$POD_NAME' exists... "
-if kubectl get pod "$POD_NAME" -n "$NAMESPACE" &> /dev/null; then
-    echo -e "${GREEN}PASS${NC}"
+# ============================================================================
+test_start "Pod '$POD_NAME' exists"
+
+if assert_pod_exists "$POD_NAME" "$NAMESPACE"; then
+    test_pass
 else
-    echo -e "${RED}FAIL${NC}"
-    echo "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
-    exit 1
+    test_fail "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
 fi
 
-# Test 2: Pod is in CrashLoopBackOff or Error state (not Running successfully)
-echo -n "Test 2: Pod is in failure state... "
-POD_STATUS=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.phase}')
-CONTAINER_STATE=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].state}' 2>/dev/null || echo "")
-RESTART_COUNT=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].restartCount}' 2>/dev/null || echo "0")
+# ============================================================================
+# Test 2: Pod is in CrashLoopBackOff state
+# ============================================================================
+test_start "Container is in CrashLoopBackOff"
 
-# The pod should either be:
-# - In CrashLoopBackOff (waiting state with reason CrashLoopBackOff)
-# - Recently crashed (restartCount > 0)
-# - In Error/Failed state
+waiting_reason=$(get_waiting_reason "$POD_NAME" "$NAMESPACE")
+restart_count=$(get_restart_count "$POD_NAME" "$NAMESPACE")
+terminated_reason=$(get_terminated_reason "$POD_NAME" "$NAMESPACE")
+pod_phase=$(get_pod_phase "$POD_NAME" "$NAMESPACE")
 
-if echo "$CONTAINER_STATE" | grep -q "CrashLoopBackOff"; then
-    echo -e "${GREEN}PASS${NC} (CrashLoopBackOff)"
-elif echo "$CONTAINER_STATE" | grep -q "Error"; then
-    echo -e "${GREEN}PASS${NC} (Error state)"
-elif [ "$RESTART_COUNT" -gt 0 ]; then
-    echo -e "${GREEN}PASS${NC} (Restart count: $RESTART_COUNT)"
-elif [ "$POD_STATUS" = "Failed" ]; then
-    echo -e "${GREEN}PASS${NC} (Failed status)"
+# CrashLoopBackOff manifests in different ways depending on timing:
+# 1. waiting.reason = "CrashLoopBackOff" (in backoff period)
+# 2. restartCount > 0 (container has crashed and restarted)
+# 3. terminated.reason = "Error" (container just crashed)
+
+if [ "$waiting_reason" = "CrashLoopBackOff" ]; then
+    test_pass "waiting.reason=CrashLoopBackOff"
+elif [ "$restart_count" -gt 0 ]; then
+    test_pass "restartCount=$restart_count"
+elif [ "$terminated_reason" = "Error" ]; then
+    test_pass "terminated.reason=Error"
+elif [ "$pod_phase" = "Failed" ]; then
+    test_pass "phase=Failed"
 else
-    # If pod is Running with 0 restarts, that means it was fixed - which is wrong for the test
-    if [ "$POD_STATUS" = "Running" ] && [ "$RESTART_COUNT" -eq 0 ]; then
-        echo -e "${RED}FAIL${NC}"
-        echo "Pod is Running successfully - this room should have a broken pod"
-        exit 1
+    # If pod is Running with 0 restarts, it was fixed - that's a failure
+    if [ "$pod_phase" = "Running" ] && [ "$restart_count" -eq 0 ]; then
+        dump_debug_info "$NAMESPACE"
+        test_fail "Pod is Running successfully with 0 restarts - expected CrashLoopBackOff"
     fi
-    echo -e "${GREEN}PASS${NC} (Status: $POD_STATUS)"
+    # Otherwise, might still be starting up
+    test_warn "Unexpected state: phase=$pod_phase, restarts=$restart_count"
 fi
 
-# Test 3: Verify the error is about missing DATABASE_URL
-echo -n "Test 3: Error message mentions DATABASE_URL... "
-LOGS=$(kubectl logs "$POD_NAME" -n "$NAMESPACE" --previous 2>/dev/null || kubectl logs "$POD_NAME" -n "$NAMESPACE" 2>/dev/null || echo "")
+# ============================================================================
+# Test 3: Error message mentions DATABASE_URL
+# ============================================================================
+test_start "Logs mention 'DATABASE_URL'"
 
-if echo "$LOGS" | grep -q "DATABASE_URL"; then
-    echo -e "${GREEN}PASS${NC}"
+if assert_logs_contain "$POD_NAME" "$NAMESPACE" "DATABASE_URL"; then
+    test_pass
 else
-    echo -e "${YELLOW}WARN${NC} (Could not verify error message - pod may not have logs yet)"
+    # This is a soft check - logs might not be available yet
+    test_warn "Could not verify - logs may not be available yet"
 fi
 
-echo ""
-echo -e "${GREEN}All critical tests passed!${NC}"
-echo "Room is in expected failure state."
+# ============================================================================
+# Test 4: Verify the root cause (missing env var)
+# ============================================================================
+test_start "DATABASE_URL env var is NOT set"
+
+env_value=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.containers[0].env[?(@.name=="DATABASE_URL")].value}' 2>/dev/null || echo "")
+
+if [ -z "$env_value" ]; then
+    test_pass "env var is missing (as expected)"
+else
+    dump_debug_info "$NAMESPACE"
+    test_fail "DATABASE_URL is set to '$env_value' - should be missing for this room"
+fi
+
+# ============================================================================
+# Summary
+# ============================================================================
+finish_tests

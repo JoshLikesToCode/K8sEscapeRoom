@@ -1,59 +1,100 @@
 #!/usr/bin/env bash
-# tests.sh - Validate that room-imagepullbackoff is in the expected failure state
+# tests.sh - Validate room-imagepullbackoff is in expected failure state
+#
+# Expected state: Pod in ImagePullBackOff due to typo in image tag (nginx:latset)
+#
+# Success criteria:
+#   - Pod exists
+#   - Container is in ImagePullBackOff or ErrImagePull state
+#   - Image tag is the broken one (nginx:latset)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
+
+# Configuration
 NAMESPACE="${NAMESPACE:-escape-room-imagepullbackoff}"
 POD_NAME="escape-app"
+ROOM_NAME="room-imagepullbackoff"
+EXPECTED_IMAGE="nginx:latset"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-echo "Testing room: room-imagepullbackoff"
-echo "Namespace: $NAMESPACE"
+echo -e "${CYAN}Testing room: ${ROOM_NAME}${NC}"
+echo -e "${DIM}Namespace: ${NAMESPACE}${NC}"
+echo -e "${DIM}Expected: ImagePullBackOff (image tag typo)${NC}"
 echo ""
 
+# ============================================================================
 # Test 1: Pod exists
-echo -n "Test 1: Pod '$POD_NAME' exists... "
-if kubectl get pod "$POD_NAME" -n "$NAMESPACE" &> /dev/null; then
-    echo -e "${GREEN}PASS${NC}"
+# ============================================================================
+test_start "Pod '$POD_NAME' exists"
+
+if assert_pod_exists "$POD_NAME" "$NAMESPACE"; then
+    test_pass
 else
-    echo -e "${RED}FAIL${NC}"
-    echo "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
-    exit 1
+    test_fail "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
 fi
 
-# Test 2: Pod is in ImagePullBackOff or ErrImagePull state
-echo -n "Test 2: Pod is in image pull failure state... "
-POD_STATUS=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.phase}')
-CONTAINER_STATE=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].state}' 2>/dev/null || echo "")
-WAITING_REASON=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[0].state.waiting.reason}' 2>/dev/null || echo "")
+# ============================================================================
+# Test 2: Container is in ImagePullBackOff or ErrImagePull state
+# ============================================================================
+test_start "Container is in ImagePullBackOff or ErrImagePull"
 
-if [ "$WAITING_REASON" = "ImagePullBackOff" ] || [ "$WAITING_REASON" = "ErrImagePull" ]; then
-    echo -e "${GREEN}PASS${NC} ($WAITING_REASON)"
-elif echo "$CONTAINER_STATE" | grep -qE "(ImagePullBackOff|ErrImagePull)"; then
-    echo -e "${GREEN}PASS${NC} (Image pull error)"
+waiting_reason=$(get_waiting_reason "$POD_NAME" "$NAMESPACE")
+pod_phase=$(get_pod_phase "$POD_NAME" "$NAMESPACE")
+
+# ImagePullBackOff can appear as:
+# 1. waiting.reason = "ImagePullBackOff" (in backoff period)
+# 2. waiting.reason = "ErrImagePull" (actively failing)
+
+if [ "$waiting_reason" = "ImagePullBackOff" ]; then
+    test_pass "waiting.reason=ImagePullBackOff"
+elif [ "$waiting_reason" = "ErrImagePull" ]; then
+    test_pass "waiting.reason=ErrImagePull"
 else
-    # If pod is Running, that means it was fixed - which is wrong for the test
-    if [ "$POD_STATUS" = "Running" ]; then
-        echo -e "${RED}FAIL${NC}"
-        echo "Pod is Running successfully - this room should have an image pull error"
-        exit 1
+    # If pod is Running, it was fixed - that's a failure
+    if [ "$pod_phase" = "Running" ]; then
+        dump_debug_info "$NAMESPACE"
+        test_fail "Pod is Running - expected ImagePullBackOff"
     fi
-    echo -e "${YELLOW}WARN${NC} (Status: $POD_STATUS, may still be attempting pull)"
+    # Might still be attempting first pull
+    if [ "$pod_phase" = "Pending" ] && [ -z "$waiting_reason" ]; then
+        test_warn "Pod is Pending, image pull may not have failed yet"
+    else
+        test_warn "Unexpected state: phase=$pod_phase, waiting=$waiting_reason"
+    fi
 fi
 
-# Test 3: Verify the image tag is the broken one
-echo -n "Test 3: Image tag is 'latset' (typo)... "
-IMAGE=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].image}')
+# ============================================================================
+# Test 3: Events show image pull failure
+# ============================================================================
+test_start "Events show image pull failure"
 
-if [ "$IMAGE" = "nginx:latset" ]; then
-    echo -e "${GREEN}PASS${NC}"
+if assert_event_contains "$NAMESPACE" "(Failed.*pull|ErrImagePull|ImagePullBackOff|manifest.*not found)"; then
+    test_pass
 else
-    echo -e "${YELLOW}WARN${NC} (Image: $IMAGE)"
+    test_warn "Could not find image pull failure in events"
 fi
 
-echo ""
-echo -e "${GREEN}All critical tests passed!${NC}"
-echo "Room is in expected failure state."
+# ============================================================================
+# Test 4: Image tag is the broken one
+# ============================================================================
+test_start "Image is '$EXPECTED_IMAGE' (typo)"
+
+actual_image=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.containers[0].image}' 2>/dev/null || echo "")
+
+if [ "$actual_image" = "$EXPECTED_IMAGE" ]; then
+    test_pass
+else
+    if [ -n "$actual_image" ]; then
+        dump_debug_info "$NAMESPACE"
+        test_fail "Image is '$actual_image' - expected '$EXPECTED_IMAGE'"
+    else
+        test_warn "Could not determine image"
+    fi
+fi
+
+# ============================================================================
+# Summary
+# ============================================================================
+finish_tests
