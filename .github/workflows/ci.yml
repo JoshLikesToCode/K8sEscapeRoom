@@ -1,5 +1,11 @@
 # K8sEscapeRoom CI Pipeline
 # Validates that rooms can be applied and produce expected failure states
+#
+# This workflow proves reproducibility by:
+# 1. Creating a fresh kind cluster
+# 2. Testing each room in a matrix (parallel where possible)
+# 3. Collecting debug artifacts on any failure
+# 4. Ensuring PRs fail if any room is flaky
 name: CI
 
 on:
@@ -10,11 +16,111 @@ on:
 
 env:
   CLUSTER_NAME: k8s-escape-room
+  # Timeout for room tests (seconds)
+  MAX_WAIT_SECONDS: 90
 
 jobs:
-  validate-rooms:
-    name: Validate Escape Rooms
+  # ===========================================================================
+  # Lint: Fast feedback on script quality
+  # ===========================================================================
+  lint-scripts:
+    name: Lint Shell Scripts
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint all scripts
+        run: |
+          echo "Linting scripts/*.sh..."
+          shellcheck scripts/*.sh
+
+          echo "Linting room test scripts..."
+          shellcheck rooms/*/tests.sh
+
+          echo "All scripts passed linting!"
+
+  # ===========================================================================
+  # Build: Ensure CLI compiles
+  # ===========================================================================
+  build-cli:
+    name: Build .NET CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj
+
+      - name: Build
+        run: dotnet build src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj --no-restore --configuration Release
+
+      - name: Run unit tests
+        run: dotnet test tests/K8sEscapeRoom.Cli.Tests/K8sEscapeRoom.Cli.Tests.csproj --configuration Release --verbosity normal
+
+  # ===========================================================================
+  # Setup: Create kind cluster (shared by room tests)
+  # ===========================================================================
+  setup-cluster:
+    name: Setup Kind Cluster
+    runs-on: ubuntu-latest
+    outputs:
+      cluster-ready: ${{ steps.verify.outputs.ready }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install kind
+        uses: helm/kind-action@v1
+        with:
+          install_only: true
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Run tools check
+        run: ./scripts/tools-check.sh
+
+      - name: Create kind cluster
+        run: |
+          kind create cluster --name $CLUSTER_NAME --config kind/cluster.yaml --wait 120s
+          kubectl cluster-info --context kind-$CLUSTER_NAME
+
+      - name: Verify cluster is ready
+        id: verify
+        run: |
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+          kubectl get nodes -o wide
+          echo "ready=true" >> $GITHUB_OUTPUT
+
+      # Keep cluster running for matrix jobs - they'll use the same runner
+      # Note: In a real matrix, each job gets its own runner, so we test sequentially here
+
+  # ===========================================================================
+  # Room Matrix: Test each room independently
+  # ===========================================================================
+  test-rooms:
+    name: Test Room (${{ matrix.room }})
+    runs-on: ubuntu-latest
+    needs: [lint-scripts]  # Don't waste time if scripts are broken
+    strategy:
+      fail-fast: false  # Run all rooms even if one fails
+      matrix:
+        room:
+          - room-crashloop-env
+          - room-imagepullbackoff
+          - room-pending-resources
 
     steps:
       - name: Checkout code
@@ -32,101 +138,143 @@ jobs:
 
       - name: Create kind cluster
         run: |
-          kind create cluster --name $CLUSTER_NAME --config kind/cluster.yaml
+          kind create cluster --name $CLUSTER_NAME --config kind/cluster.yaml --wait 120s
           kubectl cluster-info --context kind-$CLUSTER_NAME
 
       - name: Verify cluster is ready
         run: |
           kubectl wait --for=condition=Ready nodes --all --timeout=120s
-          kubectl get nodes
+          kubectl get nodes -o wide
 
-      # Test room-crashloop-env
-      - name: Apply room-crashloop-env
-        run: ./scripts/room-apply.sh room-crashloop-env
-
-      - name: Wait for pod to enter failure state
+      - name: Apply room ${{ matrix.room }}
+        id: apply
         run: |
-          echo "Waiting for pod to crash..."
-          sleep 15
-          kubectl get pods -n escape-room-crashloop-env
+          echo "::group::Applying room ${{ matrix.room }}"
+          ./scripts/room-apply.sh ${{ matrix.room }}
+          echo "::endgroup::"
 
-      - name: Validate room-crashloop-env
-        run: ./scripts/room-test.sh room-crashloop-env
-
-      - name: Reset room-crashloop-env
-        run: ./scripts/room-reset.sh room-crashloop-env
-
-      # Test room-imagepullbackoff
-      - name: Apply room-imagepullbackoff
-        run: ./scripts/room-apply.sh room-imagepullbackoff
-
-      - name: Wait for image pull to fail
+      - name: Wait for failure state to manifest
         run: |
-          echo "Waiting for image pull to fail..."
-          sleep 15
-          kubectl get pods -n escape-room-imagepullbackoff
+          echo "Waiting for pod to enter expected failure state..."
+          # Different rooms need different wait times
+          case "${{ matrix.room }}" in
+            room-crashloop-env)
+              # CrashLoopBackOff needs time for container to crash and restart
+              sleep 20
+              ;;
+            room-imagepullbackoff)
+              # ImagePullBackOff manifests quickly
+              sleep 15
+              ;;
+            room-pending-resources)
+              # Pending is immediate, but events take a moment
+              sleep 10
+              ;;
+            *)
+              sleep 15
+              ;;
+          esac
 
-      - name: Validate room-imagepullbackoff
-        run: ./scripts/room-test.sh room-imagepullbackoff
+          echo "Current pod status:"
+          kubectl get pods -n escape-${{ matrix.room }} -o wide || true
 
-      - name: Reset room-imagepullbackoff
-        run: ./scripts/room-reset.sh room-imagepullbackoff
-
-      # Test room-pending-resources
-      - name: Apply room-pending-resources
-        run: ./scripts/room-apply.sh room-pending-resources
-
-      - name: Check pending state
+      - name: Run room tests
+        id: test
         run: |
-          echo "Checking pod is pending..."
-          sleep 5
-          kubectl get pods -n escape-room-pending-resources
+          echo "::group::Testing room ${{ matrix.room }}"
+          export MAX_WAIT_SECONDS=${{ env.MAX_WAIT_SECONDS }}
+          ./scripts/room-test.sh ${{ matrix.room }}
+          echo "::endgroup::"
 
-      - name: Validate room-pending-resources
-        run: ./scripts/room-test.sh room-pending-resources
-
-      - name: Reset room-pending-resources
-        run: ./scripts/room-reset.sh room-pending-resources
-
-      - name: Cleanup - Delete cluster
-        if: always()
-        run: kind delete cluster --name $CLUSTER_NAME
-
-  lint-scripts:
-    name: Lint Shell Scripts
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install shellcheck
-        run: sudo apt-get install -y shellcheck
-
-      - name: Lint scripts
+      - name: Collect debug artifacts on failure
+        if: failure()
         run: |
-          shellcheck scripts/*.sh
-          shellcheck rooms/*/tests.sh
+          NAMESPACE="escape-${{ matrix.room }}"
+          ARTIFACT_DIR="debug-artifacts/${{ matrix.room }}"
+          mkdir -p "$ARTIFACT_DIR"
 
-  build-cli:
-    name: Build .NET CLI
-    runs-on: ubuntu-latest
+          echo "=== Collecting debug info for ${{ matrix.room }} ==="
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+          # Pod list
+          echo "--- Pods ---" > "$ARTIFACT_DIR/pods.txt"
+          kubectl get pods -n "$NAMESPACE" -o wide >> "$ARTIFACT_DIR/pods.txt" 2>&1 || true
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+          # Pod YAML
+          echo "--- Pod YAML ---" > "$ARTIFACT_DIR/pod-yaml.txt"
+          kubectl get pods -n "$NAMESPACE" -o yaml >> "$ARTIFACT_DIR/pod-yaml.txt" 2>&1 || true
+
+          # Pod describe
+          echo "--- Pod Describe ---" > "$ARTIFACT_DIR/pod-describe.txt"
+          kubectl describe pods -n "$NAMESPACE" >> "$ARTIFACT_DIR/pod-describe.txt" 2>&1 || true
+
+          # Events
+          echo "--- Events ---" > "$ARTIFACT_DIR/events.txt"
+          kubectl get events -n "$NAMESPACE" --sort-by='.lastTimestamp' >> "$ARTIFACT_DIR/events.txt" 2>&1 || true
+
+          # Logs (if any)
+          echo "--- Logs ---" > "$ARTIFACT_DIR/logs.txt"
+          for pod in $(kubectl get pods -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+            echo "=== Logs for $pod ===" >> "$ARTIFACT_DIR/logs.txt"
+            kubectl logs "$pod" -n "$NAMESPACE" >> "$ARTIFACT_DIR/logs.txt" 2>&1 || true
+            kubectl logs "$pod" -n "$NAMESPACE" --previous >> "$ARTIFACT_DIR/logs-previous.txt" 2>&1 || true
+          done
+
+          # Node info
+          echo "--- Nodes ---" > "$ARTIFACT_DIR/nodes.txt"
+          kubectl get nodes -o wide >> "$ARTIFACT_DIR/nodes.txt" 2>&1 || true
+          kubectl describe nodes >> "$ARTIFACT_DIR/node-describe.txt" 2>&1 || true
+
+          echo "Debug artifacts collected in $ARTIFACT_DIR"
+          ls -la "$ARTIFACT_DIR"
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          dotnet-version: '8.0.x'
+          name: debug-${{ matrix.room }}
+          path: debug-artifacts/${{ matrix.room }}/
+          retention-days: 7
 
-      - name: Restore dependencies
-        run: dotnet restore src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj
+      - name: Reset room
+        if: always()
+        run: |
+          echo "::group::Resetting room ${{ matrix.room }}"
+          ./scripts/room-reset.sh ${{ matrix.room }} || true
+          echo "::endgroup::"
 
-      - name: Build
-        run: dotnet build src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj --no-restore --configuration Release
+      - name: Cleanup cluster
+        if: always()
+        run: |
+          kind delete cluster --name $CLUSTER_NAME || true
 
-      - name: Test
-        run: dotnet test src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj --no-build --configuration Release --verbosity normal
-        continue-on-error: true  # Tests are optional for now
+  # ===========================================================================
+  # Final Status: Aggregate results
+  # ===========================================================================
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [lint-scripts, build-cli, test-rooms]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Lint Scripts: ${{ needs.lint-scripts.result }}"
+          echo "Build CLI: ${{ needs.build-cli.result }}"
+          echo "Test Rooms: ${{ needs.test-rooms.result }}"
+
+          if [[ "${{ needs.lint-scripts.result }}" != "success" ]]; then
+            echo "::error::Lint Scripts failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.build-cli.result }}" != "success" ]]; then
+            echo "::error::Build CLI failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test-rooms.result }}" != "success" ]]; then
+            echo "::error::Room tests failed"
+            exit 1
+          fi
+
+          echo "::notice::All CI checks passed!"

@@ -5,26 +5,52 @@ namespace K8sEscapeRoom.Cli.Commands;
 
 /// <summary>
 /// Commands for interacting with escape rooms.
+/// Maps 1:1 to Makefile room-* targets.
 /// </summary>
 public static class RoomCommands
 {
     public static Command Create(RoomService roomService)
     {
-        var roomCommand = new Command("room", "Manage escape rooms");
-
-        // room list
-        var listCommand = new Command("list", "List all available rooms");
-        listCommand.SetHandler(() =>
+        var roomCommand = new Command("room", "Manage escape rooms")
         {
-            Console.WriteLine("Available Escape Rooms:");
+            CreateListCommand(roomService),
+            CreateApplyCommand(roomService),
+            CreateResetCommand(roomService),
+            CreateTestCommand(roomService),
+            CreateObjectiveCommand(roomService),
+            CreateHintCommand(roomService),
+            CreateSolutionCommand(roomService)
+        };
+
+        return roomCommand;
+    }
+
+    /// <summary>
+    /// escape room list → make room-list
+    /// </summary>
+    private static Command CreateListCommand(RoomService roomService)
+    {
+        var command = new Command("list", "List all available rooms");
+
+        command.SetHandler(() =>
+        {
+            var rooms = roomService.GetRoomNames();
+
+            if (rooms.Count == 0)
+            {
+                Console.WriteLine("No rooms found.");
+                return;
+            }
+
+            Console.WriteLine("\u001b[36mAvailable Escape Rooms:\u001b[0m");
             Console.WriteLine();
 
-            foreach (var room in roomService.GetRoomNames())
+            foreach (var room in rooms)
             {
                 var objective = roomService.GetObjective(room);
-                var summary = ExtractFirstContentLine(objective);
+                var summary = RoomService.ExtractSummary(objective);
 
-                Console.WriteLine($"  {room}");
+                Console.WriteLine($"  \u001b[32m{room}\u001b[0m");
                 if (!string.IsNullOrEmpty(summary))
                 {
                     Console.WriteLine($"    {summary}");
@@ -33,85 +59,137 @@ public static class RoomCommands
             }
         });
 
-        // room apply <name>
-        var applyCommand = new Command("apply", "Apply a room's broken state");
-        var applyRoomArg = new Argument<string>("name", "The room name");
-        applyCommand.AddArgument(applyRoomArg);
-        applyCommand.SetHandler(async (string roomName) =>
+        return command;
+    }
+
+    /// <summary>
+    /// escape room apply <name> → make room-apply ROOM=<name>
+    /// </summary>
+    private static Command CreateApplyCommand(RoomService roomService)
+    {
+        var command = new Command("apply", "Apply a room's broken state (enter the room)");
+        var roomArg = new Argument<string>("name", "The room name (e.g., room-crashloop-env)");
+        command.AddArgument(roomArg);
+
+        command.SetHandler(async (string roomName) =>
         {
-            if (!roomService.RoomExists(roomName))
-            {
-                Console.Error.WriteLine($"Room '{roomName}' not found.");
-                Console.Error.WriteLine("Run 'escape room list' to see available rooms.");
-                Environment.ExitCode = 1;
+            if (!ValidateRoom(roomService, roomName))
                 return;
-            }
 
-            var exitCode = await roomService.ApplyRoomAsync(roomName);
-            Environment.ExitCode = exitCode;
-        }, applyRoomArg);
+            var result = await roomService.ApplyRoomAsync(roomName);
+            Environment.ExitCode = result.ExitCode;
+        }, roomArg);
 
-        // room reset <name>
-        var resetCommand = new Command("reset", "Reset a room (remove its resources)");
-        var resetRoomArg = new Argument<string>("name", "The room name");
-        resetCommand.AddArgument(resetRoomArg);
-        resetCommand.SetHandler(async (string roomName) =>
+        return command;
+    }
+
+    /// <summary>
+    /// escape room reset <name> → make room-reset ROOM=<name>
+    /// </summary>
+    private static Command CreateResetCommand(RoomService roomService)
+    {
+        var command = new Command("reset", "Reset a room (remove its resources)");
+        var roomArg = new Argument<string>("name", "The room name");
+        command.AddArgument(roomArg);
+
+        command.SetHandler(async (string roomName) =>
         {
-            if (!roomService.RoomExists(roomName))
-            {
-                Console.Error.WriteLine($"Room '{roomName}' not found.");
-                Environment.ExitCode = 1;
+            if (!ValidateRoom(roomService, roomName))
                 return;
-            }
 
-            var exitCode = await roomService.ResetRoomAsync(roomName);
-            Environment.ExitCode = exitCode;
-        }, resetRoomArg);
+            var result = await roomService.ResetRoomAsync(roomName);
+            Environment.ExitCode = result.ExitCode;
+        }, roomArg);
 
-        // room objective <name>
-        var objectiveCommand = new Command("objective", "Show a room's objective");
-        var objectiveRoomArg = new Argument<string>("name", "The room name");
-        objectiveCommand.AddArgument(objectiveRoomArg);
-        objectiveCommand.SetHandler((string roomName) =>
+        return command;
+    }
+
+    /// <summary>
+    /// escape room test <name> → make room-test ROOM=<name>
+    /// </summary>
+    private static Command CreateTestCommand(RoomService roomService)
+    {
+        var command = new Command("test", "Run tests to validate a room is in expected failure state");
+        var roomArg = new Argument<string>("name", "The room name");
+        command.AddArgument(roomArg);
+
+        command.SetHandler(async (string roomName) =>
         {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
+            var result = await roomService.TestRoomAsync(roomName);
+            Environment.ExitCode = result.ExitCode;
+        }, roomArg);
+
+        return command;
+    }
+
+    /// <summary>
+    /// escape room objective <name> → make room-objective ROOM=<name>
+    /// </summary>
+    private static Command CreateObjectiveCommand(RoomService roomService)
+    {
+        var command = new Command("objective", "Show a room's objective (what you need to achieve)");
+        var roomArg = new Argument<string>("name", "The room name");
+        command.AddArgument(roomArg);
+
+        command.SetHandler((string roomName) =>
+        {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
             var content = roomService.GetObjective(roomName);
-            if (content == null)
+            if (content is null)
             {
-                Console.Error.WriteLine($"Room '{roomName}' not found or has no OBJECTIVE.md.");
+                WriteError($"OBJECTIVE.md not found for room '{roomName}'.");
                 Environment.ExitCode = 1;
                 return;
             }
-            Console.WriteLine(content);
-        }, objectiveRoomArg);
 
-        // room hint <name> [--level]
-        var hintCommand = new Command("hint", "Show hints for a room");
-        var hintRoomArg = new Argument<string>("name", "The room name");
-        var levelOption = new Option<int?>("--level", "Hint level (1-4)");
-        levelOption.AddAlias("-l");
-        hintCommand.AddArgument(hintRoomArg);
-        hintCommand.AddOption(levelOption);
-        hintCommand.SetHandler((string roomName, int? level) =>
+            Console.WriteLine(content);
+        }, roomArg);
+
+        return command;
+    }
+
+    /// <summary>
+    /// escape room hint <name> [--level N] → make room-hint ROOM=<name>
+    /// </summary>
+    private static Command CreateHintCommand(RoomService roomService)
+    {
+        var command = new Command("hint", "Show hints for a room");
+        var roomArg = new Argument<string>("name", "The room name");
+        var levelOption = new Option<int?>(
+            aliases: ["--level", "-l"],
+            description: "Show only a specific hint level (1-4)");
+
+        command.AddArgument(roomArg);
+        command.AddOption(levelOption);
+
+        command.SetHandler((string roomName, int? level) =>
         {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
             var content = roomService.GetHints(roomName);
-            if (content == null)
+            if (content is null)
             {
-                Console.Error.WriteLine($"Room '{roomName}' not found or has no HINTS.md.");
+                WriteError($"HINTS.md not found for room '{roomName}'.");
                 Environment.ExitCode = 1;
                 return;
             }
 
             if (level.HasValue)
             {
-                // Extract specific hint level
-                var hintSection = ExtractHintLevel(content, level.Value);
-                if (hintSection != null)
+                var hintSection = RoomService.ExtractHintLevel(content, level.Value);
+                if (hintSection is not null)
                 {
                     Console.WriteLine(hintSection);
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Hint level {level.Value} not found.");
+                    WriteError($"Hint level {level.Value} not found. Valid levels are 1-4.");
                     Environment.ExitCode = 1;
                 }
             }
@@ -119,79 +197,66 @@ public static class RoomCommands
             {
                 Console.WriteLine(content);
             }
-        }, hintRoomArg, levelOption);
+        }, roomArg, levelOption);
 
-        // room solution <name>
-        var solutionCommand = new Command("solution", "Show the solution for a room");
-        var solutionRoomArg = new Argument<string>("name", "The room name");
-        solutionCommand.AddArgument(solutionRoomArg);
-        solutionCommand.SetHandler((string roomName) =>
+        return command;
+    }
+
+    /// <summary>
+    /// escape room solution <name> → make room-solution ROOM=<name>
+    /// </summary>
+    private static Command CreateSolutionCommand(RoomService roomService)
+    {
+        var command = new Command("solution", "Show the full solution for a room (spoilers!)");
+        var roomArg = new Argument<string>("name", "The room name");
+        command.AddArgument(roomArg);
+
+        command.SetHandler((string roomName) =>
         {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
             var content = roomService.GetSolution(roomName);
-            if (content == null)
+            if (content is null)
             {
-                Console.Error.WriteLine($"Room '{roomName}' not found or has no SOLUTION.md.");
+                WriteError($"SOLUTION.md not found for room '{roomName}'.");
                 Environment.ExitCode = 1;
                 return;
             }
+
             Console.WriteLine(content);
-        }, solutionRoomArg);
+        }, roomArg);
 
-        roomCommand.AddCommand(listCommand);
-        roomCommand.AddCommand(applyCommand);
-        roomCommand.AddCommand(resetCommand);
-        roomCommand.AddCommand(objectiveCommand);
-        roomCommand.AddCommand(hintCommand);
-        roomCommand.AddCommand(solutionCommand);
-
-        return roomCommand;
+        return command;
     }
 
-    /// <summary>
-    /// Extracts the first non-header, non-empty line from markdown content.
-    /// </summary>
-    private static string? ExtractFirstContentLine(string? content)
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    private static bool ValidateRoom(RoomService roomService, string roomName)
     {
-        if (string.IsNullOrEmpty(content))
-            return null;
+        if (roomService.RoomExists(roomName))
+            return true;
 
-        var lines = content.Split('\n')
-            .Select(l => l.Trim())
-            .Where(l => !string.IsNullOrEmpty(l) && !l.StartsWith('#'));
+        WriteError($"Room '{roomName}' not found.");
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("Available rooms:");
 
-        return lines.FirstOrDefault();
-    }
-
-    /// <summary>
-    /// Extracts a specific hint level from the hints markdown.
-    /// </summary>
-    private static string? ExtractHintLevel(string content, int level)
-    {
-        var lines = content.Split('\n');
-        var inTargetSection = false;
-        var result = new List<string>();
-
-        foreach (var line in lines)
+        foreach (var room in roomService.GetRoomNames())
         {
-            if (line.StartsWith("## Hint Level "))
-            {
-                if (line.Contains($"Level {level}"))
-                {
-                    inTargetSection = true;
-                    result.Add(line);
-                }
-                else if (inTargetSection)
-                {
-                    // Reached next section, stop
-                    break;
-                }
-            }
-            else if (inTargetSection)
-            {
-                result.Add(line);
-            }
+            Console.Error.WriteLine($"  {room}");
         }
 
-        return result.Count > 0 ? string.Join('\n', result).Trim() : null;
+        Console.Error.WriteLine();
+        Console.Error.WriteLine("Run 'escape room list' for details.");
+
+        Environment.ExitCode = 1;
+        return false;
+    }
+
+    private static void WriteError(string message)
+    {
+        Console.Error.WriteLine($"\u001b[31mError: {message}\u001b[0m");
     }
 }

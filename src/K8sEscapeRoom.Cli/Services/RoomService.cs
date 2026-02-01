@@ -5,30 +5,42 @@ namespace K8sEscapeRoom.Cli.Services;
 /// </summary>
 public class RoomService
 {
-    private readonly ScriptRunner _scriptRunner;
     private readonly string _roomsDirectory;
+    private readonly string _projectRoot;
+    private readonly ProcessRunner _processRunner;
 
-    public RoomService(ScriptRunner scriptRunner)
+    public RoomService(string projectRoot, ProcessRunner processRunner)
     {
-        _scriptRunner = scriptRunner;
-        _roomsDirectory = Path.Combine(scriptRunner.ProjectRoot, "rooms");
+        _projectRoot = projectRoot;
+        _processRunner = processRunner;
+        _roomsDirectory = Path.Combine(projectRoot, "rooms");
     }
 
     /// <summary>
     /// Gets all available room names.
+    /// Rooms are directories under /rooms that start with "room-".
     /// </summary>
-    public IEnumerable<string> GetRoomNames()
+    public IReadOnlyList<string> GetRoomNames()
     {
-        if (!Directory.Exists(_roomsDirectory))
+        return DiscoverRooms(_roomsDirectory);
+    }
+
+    /// <summary>
+    /// Discovers rooms in the specified directory.
+    /// </summary>
+    public static IReadOnlyList<string> DiscoverRooms(string roomsDirectory)
+    {
+        if (!Directory.Exists(roomsDirectory))
         {
-            return Enumerable.Empty<string>();
+            return [];
         }
 
-        return Directory.GetDirectories(_roomsDirectory)
+        return Directory.GetDirectories(roomsDirectory)
             .Select(Path.GetFileName)
-            .Where(name => name != null && name.StartsWith("room-"))
+            .Where(name => name is not null && name.StartsWith("room-"))
             .Cast<string>()
-            .OrderBy(name => name);
+            .OrderBy(name => name)
+            .ToList();
     }
 
     /// <summary>
@@ -36,7 +48,15 @@ public class RoomService
     /// </summary>
     public bool RoomExists(string roomName)
     {
-        return Directory.Exists(Path.Combine(_roomsDirectory, roomName));
+        return Directory.Exists(GetRoomPath(roomName));
+    }
+
+    /// <summary>
+    /// Gets the full path to a room directory.
+    /// </summary>
+    public string GetRoomPath(string roomName)
+    {
+        return Path.Combine(_roomsDirectory, roomName);
     }
 
     /// <summary>
@@ -64,24 +84,84 @@ public class RoomService
     public string? GetSolution(string roomName) => GetRoomDocument(roomName, "SOLUTION.md");
 
     /// <summary>
-    /// Applies a room's broken state.
+    /// Extracts a specific hint level from hints content.
     /// </summary>
-    public Task<int> ApplyRoomAsync(string roomName)
+    public static string? ExtractHintLevel(string content, int level)
     {
-        return _scriptRunner.RunMakeTargetAsync("room-apply", new Dictionary<string, string>
+        var lines = content.Split('\n');
+        var inTargetSection = false;
+        var result = new List<string>();
+
+        foreach (var line in lines)
         {
-            ["ROOM"] = roomName
-        });
+            if (line.StartsWith("## Hint Level "))
+            {
+                if (line.Contains($"Level {level}"))
+                {
+                    inTargetSection = true;
+                    result.Add(line);
+                }
+                else if (inTargetSection)
+                {
+                    break; // Reached next section
+                }
+            }
+            else if (inTargetSection)
+            {
+                result.Add(line);
+            }
+        }
+
+        return result.Count > 0 ? string.Join('\n', result).Trim() : null;
+    }
+
+    /// <summary>
+    /// Extracts the first content line (non-header) from markdown.
+    /// </summary>
+    public static string? ExtractSummary(string? content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return null;
+
+        return content.Split('\n')
+            .Select(l => l.Trim())
+            .FirstOrDefault(l => !string.IsNullOrEmpty(l) && !l.StartsWith('#'));
+    }
+
+    // =========================================================================
+    // Commands - These map 1:1 to Makefile targets
+    // =========================================================================
+
+    /// <summary>
+    /// Applies a room's broken state.
+    /// Maps to: make room-apply ROOM=...
+    /// </summary>
+    public Task<ProcessRunner.ProcessResult> ApplyRoomAsync(
+        string roomName, CancellationToken ct = default)
+    {
+        return _processRunner.RunMakeAsync("room-apply", _projectRoot,
+            new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
     }
 
     /// <summary>
     /// Resets a room (removes its resources).
+    /// Maps to: make room-reset ROOM=...
     /// </summary>
-    public Task<int> ResetRoomAsync(string roomName)
+    public Task<ProcessRunner.ProcessResult> ResetRoomAsync(
+        string roomName, CancellationToken ct = default)
     {
-        return _scriptRunner.RunMakeTargetAsync("room-reset", new Dictionary<string, string>
-        {
-            ["ROOM"] = roomName
-        });
+        return _processRunner.RunMakeAsync("room-reset", _projectRoot,
+            new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
+    }
+
+    /// <summary>
+    /// Runs tests for a room.
+    /// Maps to: make room-test ROOM=...
+    /// </summary>
+    public Task<ProcessRunner.ProcessResult> TestRoomAsync(
+        string roomName, CancellationToken ct = default)
+    {
+        return _processRunner.RunMakeAsync("room-test", _projectRoot,
+            new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
     }
 }
