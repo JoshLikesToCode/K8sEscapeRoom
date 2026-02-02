@@ -1,0 +1,51 @@
+# Room: Probe Doom
+# Liveness probe is misconfigured and keeps killing the container
+# nginx doesn't have a /healthz endpoint, so the probe always fails
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-app
+  labels:
+    # Kubernetes recommended labels
+    app: escape-app
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    # K8sEscapeRoom labels
+    k8sescaperoom.dev/room: room-probe-doom
+    k8sescaperoom.dev/difficulty: intermediate
+    k8sescaperoom.dev/failure-mode: CrashLoopBackOff
+  annotations:
+    k8sescaperoom.dev/description: "Liveness probe fails causing constant restarts"
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "10m"
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+      # BUG: nginx doesn't have a /healthz endpoint!
+      # This probe will always fail, killing the container repeatedly
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 80
+        initialDelaySeconds: 3
+        periodSeconds: 3
+        failureThreshold: 2
+        timeoutSeconds: 1
+      # Readiness probe also misconfigured
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 80
+        initialDelaySeconds: 2
+        periodSeconds: 2
+        failureThreshold: 2
+        timeoutSeconds: 1

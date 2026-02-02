@@ -125,6 +125,12 @@ jobs:
           - room-crashloop-env
           - room-imagepullbackoff
           - room-pending-resources
+          - room-configmap-missing
+          - room-secret-missing
+          - room-service-selector-mismatch
+          - room-probe-doom
+          - room-rbac-denied
+          - room-ingress-misroute
 
     steps:
       - name: Checkout code
@@ -150,6 +156,18 @@ jobs:
           kubectl wait --for=condition=Ready nodes --all --timeout=120s
           kubectl get nodes -o wide
 
+      - name: Install ingress controller (ingress rooms only)
+        if: matrix.room == 'room-ingress-misroute'
+        run: |
+          echo "Installing nginx ingress controller for ingress room..."
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+          echo "Waiting for ingress controller to be ready..."
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=90s
+          echo "Ingress controller ready!"
+
       - name: Apply room ${{ matrix.room }}
         id: apply
         run: |
@@ -173,6 +191,30 @@ jobs:
             room-pending-resources)
               # Pending is immediate, but events take a moment
               sleep 10
+              ;;
+            room-configmap-missing)
+              # CreateContainerConfigError is immediate
+              sleep 10
+              ;;
+            room-secret-missing)
+              # CreateContainerConfigError is immediate
+              sleep 10
+              ;;
+            room-service-selector-mismatch)
+              # Need pod to be running first
+              sleep 15
+              ;;
+            room-probe-doom)
+              # Needs probe failures and restarts
+              sleep 20
+              ;;
+            room-rbac-denied)
+              # Pod runs and fails quickly
+              sleep 15
+              ;;
+            room-ingress-misroute)
+              # Needs deployment + service ready
+              sleep 20
               ;;
             *)
               sleep 15
