@@ -106,7 +106,7 @@ wait_for_pod() {
     local timeout="${3:-60}"
     local elapsed=0
 
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         if kubectl get pods -n "$namespace" -l "$label_selector" --no-headers 2>/dev/null | grep -q .; then
             return 0
         fi
@@ -142,7 +142,7 @@ wait_for_waiting_reason() {
     local timeout="${4:-60}"
     local elapsed=0
 
-    while [ $elapsed -lt $timeout ]; do
+    while [ $elapsed -lt "$timeout" ]; do
         local pod_name
         pod_name=$(kubectl get pods -n "$namespace" -l "$label_selector" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
         if [ -n "$pod_name" ]; then
