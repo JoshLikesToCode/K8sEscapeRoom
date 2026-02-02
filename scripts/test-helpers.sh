@@ -95,6 +95,70 @@ test_skip() {
 }
 
 # ============================================================================
+# Wait Functions
+# ============================================================================
+
+# Wait for a pod to exist (with label selector)
+# Usage: wait_for_pod "$NAMESPACE" "app=escape-app" [timeout_seconds]
+wait_for_pod() {
+    local namespace="$1"
+    local label_selector="$2"
+    local timeout="${3:-60}"
+    local elapsed=0
+
+    while [ $elapsed -lt $timeout ]; do
+        if kubectl get pods -n "$namespace" -l "$label_selector" --no-headers 2>/dev/null | grep -q .; then
+            return 0
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    return 1
+}
+
+# Wait for a pod condition
+# Usage: wait_for_condition "$NAMESPACE" "app=escape-app" "Ready" "True" [timeout_seconds]
+wait_for_condition() {
+    local namespace="$1"
+    local label_selector="$2"
+    local condition="$3"
+    local value="$4"
+    local timeout="${5:-60}"
+
+    if kubectl wait --for=condition="$condition=$value" pod -l "$label_selector" \
+        -n "$namespace" --timeout="${timeout}s" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Wait for a specific waiting reason (CrashLoopBackOff, ImagePullBackOff, etc.)
+# Usage: wait_for_waiting_reason "$NAMESPACE" "app=escape-app" "CrashLoopBackOff" [timeout_seconds]
+wait_for_waiting_reason() {
+    local namespace="$1"
+    local label_selector="$2"
+    local expected_reason="$3"
+    local timeout="${4:-60}"
+    local elapsed=0
+
+    while [ $elapsed -lt $timeout ]; do
+        local pod_name
+        pod_name=$(kubectl get pods -n "$namespace" -l "$label_selector" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+        if [ -n "$pod_name" ]; then
+            local actual_reason
+            actual_reason=$(get_waiting_reason "$pod_name" "$namespace")
+            if [ "$actual_reason" = "$expected_reason" ]; then
+                return 0
+            fi
+        fi
+        sleep 2
+        elapsed=$((elapsed + 2))
+    done
+    return 1
+}
+
+# ============================================================================
 # Kubectl Helper Functions
 # ============================================================================
 

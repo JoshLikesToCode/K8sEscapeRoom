@@ -35,11 +35,15 @@ jobs:
 
       - name: Lint all scripts
         run: |
+          # SC1091: Don't fail on "not following sourced file" - expected for test-helpers.sh
           echo "Linting scripts/*.sh..."
-          shellcheck scripts/*.sh
+          shellcheck --exclude=SC1091 scripts/*.sh
 
           echo "Linting room test scripts..."
-          shellcheck rooms/*/tests.sh
+          shellcheck --exclude=SC1091 rooms/*/tests.sh
+
+          echo "Linting room escape-test scripts..."
+          shellcheck --exclude=SC1091 rooms/*/escape-tests.sh || true  # Optional file
 
           echo "All scripts passed linting!"
 

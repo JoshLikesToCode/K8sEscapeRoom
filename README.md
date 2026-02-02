@@ -58,7 +58,10 @@ make room-objective ROOM=room-crashloop-env  # What to achieve
 make room-hint ROOM=room-crashloop-env       # Progressive hints
 make room-solution ROOM=room-crashloop-env   # Full solution
 
-# 6. Reset and try again (or move to next room)
+# 6. Verify your fix
+make room-escape-test ROOM=room-crashloop-env  # Validates you escaped!
+
+# 7. Reset and try again (or move to next room)
 make room-reset ROOM=room-crashloop-env
 ```
 
@@ -81,9 +84,11 @@ make cluster-up        # Create the kind cluster
 make cluster-down      # Delete the kind cluster
 make cluster-status    # Show cluster status
 make room-list         # List all available rooms
+make room-new ROOM=<name>        # Create a new room from template
 make room-apply ROOM=<name>      # Enter a room (apply broken state)
 make room-reset ROOM=<name>      # Reset a room (delete resources)
-make room-test ROOM=<name>       # Validate room is in expected state
+make room-test ROOM=<name>       # Validate room is in broken state
+make room-escape-test ROOM=<name> # Validate you escaped (fixed it)
 make room-objective ROOM=<name>  # Show room objective
 make room-hint ROOM=<name>       # Show hints
 make room-solution ROOM=<name>   # Show solution
@@ -175,7 +180,9 @@ K8sEscapeRoom/
 │   ├── kind-delete.sh       # Delete kind cluster
 │   ├── room-apply.sh        # Apply a room's broken state
 │   ├── room-reset.sh        # Reset a room
-│   └── room-test.sh         # Test room is in expected state
+│   ├── room-test.sh         # Test room is in expected state
+│   ├── room-new.sh          # Scaffold a new room
+│   └── test-helpers.sh      # Shared test utilities
 ├── kind/
 │   └── cluster.yaml         # Kind cluster configuration
 ├── rooms/                   # Escape room definitions
@@ -184,32 +191,47 @@ K8sEscapeRoom/
 │       ├── OBJECTIVE.md     # What you need to achieve
 │       ├── HINTS.md         # Progressive hints
 │       ├── SOLUTION.md      # Full solution
-│       └── tests.sh         # Validation script
+│       ├── tests.sh         # Validates broken state
+│       └── escape-tests.sh  # Validates fixed state (optional)
 ├── src/
 │   └── K8sEscapeRoom.Cli/   # Optional .NET CLI wrapper
+├── tests/
+│   └── K8sEscapeRoom.Cli.Tests/  # CLI unit tests
 └── .github/workflows/
     └── ci.yml               # CI pipeline
 ```
 
 ## Creating New Rooms
 
-1. Create a new directory under `rooms/`:
-   ```bash
-   mkdir rooms/room-my-scenario
-   ```
+Use the room generator to scaffold a new room:
 
-2. Create the required files:
-   - `app.yaml` - Kubernetes manifest with the intentional bug
-   - `OBJECTIVE.md` - Clear description of what success looks like
-   - `HINTS.md` - Progressive hints (Level 1-4)
-   - `SOLUTION.md` - Complete diagnosis and fix
-   - `tests.sh` - Script to validate the broken state
+```bash
+make room-new ROOM=room-my-scenario
+```
 
-3. Test your room:
-   ```bash
-   make room-apply ROOM=room-my-scenario
-   make room-test ROOM=room-my-scenario
-   ```
+This creates all required files with templates:
+- `app.yaml` - Kubernetes manifest (add your intentional bug)
+- `OBJECTIVE.md` - What success looks like
+- `HINTS.md` - Progressive hints (Level 1-4)
+- `SOLUTION.md` - Complete diagnosis and fix
+- `tests.sh` - Validates the broken state
+- `escape-tests.sh` - Validates the fixed state
+
+Then customize each file and test your room:
+
+```bash
+# Apply and verify the broken state
+make room-apply ROOM=room-my-scenario
+make room-test ROOM=room-my-scenario
+
+# Fix it yourself and verify the escape
+make room-escape-test ROOM=room-my-scenario
+
+# Reset when done
+make room-reset ROOM=room-my-scenario
+```
+
+See [docs/RoomContract.md](docs/RoomContract.md) for detailed requirements.
 
 ## Philosophy
 

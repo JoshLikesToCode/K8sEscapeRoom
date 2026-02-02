@@ -35,9 +35,11 @@ help: ## Show all available commands
 	@echo ""
 	@echo -e "$(YELLOW)Rooms:$(NC)"
 	@echo -e "  $(GREEN)room-list$(NC)                  List all available rooms"
+	@echo -e "  $(GREEN)room-new ROOM=<name>$(NC)       Create a new room from template"
 	@echo -e "  $(GREEN)room-apply ROOM=<name>$(NC)     Enter a room (apply broken state)"
 	@echo -e "  $(GREEN)room-reset ROOM=<name>$(NC)     Reset a room (delete resources)"
-	@echo -e "  $(GREEN)room-test ROOM=<name>$(NC)      Validate room is in expected state"
+	@echo -e "  $(GREEN)room-test ROOM=<name>$(NC)      Validate room is in broken state"
+	@echo -e "  $(GREEN)room-escape-test ROOM=<name>$(NC) Validate you escaped (fixed it)"
 	@echo -e "  $(GREEN)room-objective ROOM=<name>$(NC) Show room objective"
 	@echo -e "  $(GREEN)room-hint ROOM=<name>$(NC)      Show hints"
 	@echo -e "  $(GREEN)room-solution ROOM=<name>$(NC)  Show solution"
@@ -66,6 +68,19 @@ cluster-status: ## Show cluster status
 	fi
 
 ##@ Rooms
+.PHONY: room-new
+room-new: ## Create a new room from template
+ifndef ROOM
+	@echo -e "$(RED)Error: ROOM is not set$(NC)"
+	@echo ""
+	@echo "Usage: make room-new ROOM=room-<name>"
+	@echo ""
+	@echo "Example:"
+	@echo "  make room-new ROOM=room-oom-killed"
+	@exit 1
+endif
+	@./scripts/room-new.sh $(ROOM)
+
 .PHONY: room-list
 room-list: ## List all available rooms
 	@echo -e "$(CYAN)Available Escape Rooms:$(NC)"
@@ -89,8 +104,27 @@ room-reset: _check-room ## Reset a room (delete resources)
 	@./scripts/room-reset.sh $(ROOM)
 
 .PHONY: room-test
-room-test: _check-room _check-room-files ## Validate room is in expected state
+room-test: _check-room _check-room-files ## Validate room is in broken state
 	@./scripts/room-test.sh $(ROOM)
+
+.PHONY: room-escape-test
+room-escape-test: _check-room ## Validate you escaped (fixed the room)
+	@if [ -f "rooms/$(ROOM)/escape-tests.sh" ]; then \
+		if [ ! -x "rooms/$(ROOM)/escape-tests.sh" ]; then \
+			echo -e "$(RED)Error: escape-tests.sh is not executable$(NC)"; \
+			echo "Fix with: chmod +x rooms/$(ROOM)/escape-tests.sh"; \
+			exit 1; \
+		fi; \
+		./rooms/$(ROOM)/escape-tests.sh; \
+	else \
+		echo -e "$(YELLOW)Note: escape-tests.sh not found for room '$(ROOM)'$(NC)"; \
+		echo "This room doesn't have escape validation yet."; \
+		echo ""; \
+		echo "Manually verify:"; \
+		echo "  kubectl get pods -n escape-$(ROOM)"; \
+		echo ""; \
+		echo "Success criteria: Pod should be Running without restarts."; \
+	fi
 
 .PHONY: room-objective
 room-objective: _check-room ## Show room objective

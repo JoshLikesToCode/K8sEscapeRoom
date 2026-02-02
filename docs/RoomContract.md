@@ -8,12 +8,23 @@ Every room must be located in `rooms/room-<name>/` and contain these files:
 
 ```
 rooms/room-<name>/
-├── app.yaml        # Kubernetes manifest(s) with intentional bug
-├── OBJECTIVE.md    # What the user must achieve to escape
-├── HINTS.md        # Progressive hints (Level 1-4)
-├── SOLUTION.md     # Complete diagnosis and fix
-└── tests.sh        # Script to validate the broken state
+├── app.yaml            # Kubernetes manifest(s) with intentional bug
+├── OBJECTIVE.md        # What the user must achieve to escape
+├── HINTS.md            # Progressive hints (Level 1-4)
+├── SOLUTION.md         # Complete diagnosis and fix
+├── tests.sh            # Script to validate the broken state
+└── escape-tests.sh     # Script to validate the fixed state (optional)
 ```
+
+## Scaffolding a New Room
+
+Use the room generator to create all required files:
+
+```bash
+make room-new ROOM=room-my-scenario
+```
+
+This creates the directory structure with templates that you customize.
 
 ## Naming Conventions
 
@@ -199,6 +210,45 @@ echo -n "Test 2: Pod is in failure state... "
 echo "All tests passed!"
 ```
 
+### escape-tests.sh (Optional)
+
+Validates that the room has been **fixed** (escaped). This runs after the user attempts to fix the issue.
+
+Must:
+- Be executable (`chmod +x`)
+- Use `set -euo pipefail`
+- Source `test-helpers.sh` for shared utilities
+- Validate the pod is Running and Ready
+- Check room-specific success criteria (e.g., logs show success message)
+- Print congratulations message on success
+
+Template:
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
+
+NAMESPACE="escape-room-<name>"
+POD_LABEL="app=escape-app"
+
+echo "=== Testing room-<name> (escaped/fixed state) ==="
+
+# Check pod is running
+test_start "Pod is Running"
+if wait_for_condition "$NAMESPACE" "$POD_LABEL" "Ready" "True" 30; then
+    test_pass "Pod is Running and Ready"
+else
+    test_fail "Pod is not in Running/Ready state"
+fi
+
+# Room-specific checks...
+
+echo ""
+echo "CONGRATULATIONS! You escaped the room!"
+```
+
 ## Validation
 
 Before submitting a new room, verify:
@@ -207,18 +257,23 @@ Before submitting a new room, verify:
 # 1. All required files exist
 ls rooms/room-<name>/{app.yaml,OBJECTIVE.md,HINTS.md,SOLUTION.md,tests.sh}
 
-# 2. Test script is executable
+# 2. Test scripts are executable
 test -x rooms/room-<name>/tests.sh
+test -x rooms/room-<name>/escape-tests.sh  # If present
 
 # 3. Manifests have required labels
-grep -q "app.kubernetes.io/part-of: K8sEscapeRoom" rooms/room-<name>/app.yaml
+grep -q "app.kubernetes.io/part-of" rooms/room-<name>/app.yaml
 grep -q "k8sescaperoom.dev/room:" rooms/room-<name>/app.yaml
 
-# 4. Room applies and enters expected state
+# 4. Room applies and enters expected broken state
 make room-apply ROOM=room-<name>
 make room-test ROOM=room-<name>
 
-# 5. Room can be reset
+# 5. Fix the room and verify escape validation works
+# (manually fix the issue, then run:)
+make room-escape-test ROOM=room-<name>
+
+# 6. Room can be reset
 make room-reset ROOM=room-<name>
 ```
 
