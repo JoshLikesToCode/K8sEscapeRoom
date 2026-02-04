@@ -122,15 +122,21 @@ jobs:
       fail-fast: false  # Run all rooms even if one fails
       matrix:
         room:
+          # Beginner rooms
           - room-crashloop-env
           - room-imagepullbackoff
           - room-pending-resources
+          # Intermediate rooms
           - room-configmap-missing
           - room-secret-missing
           - room-service-selector-mismatch
           - room-probe-doom
           - room-rbac-denied
           - room-ingress-misroute
+          # Boss rooms (multi-failure)
+          - boss-checkout-meltdown
+          - boss-registry-curse
+          - boss-slow-death
 
     steps:
       - name: Checkout code
@@ -215,6 +221,18 @@ jobs:
             room-ingress-misroute)
               # Needs deployment + service ready
               sleep 20
+              ;;
+            boss-checkout-meltdown)
+              # Pods need to start and probe needs to fail
+              sleep 20
+              ;;
+            boss-registry-curse)
+              # ImagePullBackOff manifests quickly
+              sleep 15
+              ;;
+            boss-slow-death)
+              # Needs OOM and/or probe failures + restarts
+              sleep 25
               ;;
             *)
               sleep 15

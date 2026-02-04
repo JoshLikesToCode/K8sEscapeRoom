@@ -1,0 +1,49 @@
+# Boss Room: Slow Death
+# MULTIPLE FAILURES causing intermittent restarts:
+#   1. Memory limit too tight - causes OOMKilled under load
+#   2. Liveness probe too aggressive - kills pod on any slowdown
+#
+# The pod might start briefly but dies from various causes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: escape-app
+  labels:
+    app: escape-app
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    k8sescaperoom.dev/room: boss-slow-death
+    k8sescaperoom.dev/difficulty: advanced
+    k8sescaperoom.dev/failure-mode: CrashLoopBackOff
+  annotations:
+    k8sescaperoom.dev/description: "Memory limits too tight + liveness probe too aggressive"
+spec:
+  containers:
+    - name: app
+      image: nginx:1.25-alpine
+      ports:
+        - containerPort: 80
+      resources:
+        requests:
+          memory: "16Mi"
+          cpu: "10m"
+        limits:
+          # BUG #1: Memory limit way too low for nginx
+          # nginx needs ~50-60Mi minimum, this will OOM
+          memory: "24Mi"
+          cpu: "50m"
+      # BUG #2: Liveness probe is extremely aggressive
+      # - Only 1 second timeout
+      # - Only 1 failure allowed before kill
+      # - Checks every 2 seconds
+      # Any momentary slowdown = dead pod
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        initialDelaySeconds: 1
+        periodSeconds: 2
+        timeoutSeconds: 1
+        failureThreshold: 1
+        successThreshold: 1

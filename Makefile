@@ -15,7 +15,8 @@ RED := \033[0;31m
 NC := \033[0m # No Color
 
 # Required files for a valid room (per RoomContract.md)
-REQUIRED_FILES := app.yaml OBJECTIVE.md HINTS.md SOLUTION.md tests.sh
+# Note: OBJECTIVE.md OR INCIDENT.md is also required (checked separately)
+REQUIRED_FILES := app.yaml HINTS.md SOLUTION.md tests.sh
 
 ##@ General
 .PHONY: help
@@ -85,14 +86,21 @@ endif
 room-list: ## List all available rooms
 	@echo -e "$(CYAN)Available Escape Rooms:$(NC)"
 	@echo ""
-	@for room in rooms/room-*/; do \
-		room_name=$$(basename "$$room"); \
-		if [ -f "$$room/OBJECTIVE.md" ]; then \
-			objective=$$(head -n 3 "$$room/OBJECTIVE.md" | tail -n 1); \
-			echo -e "  $(GREEN)$$room_name$(NC)"; \
-			echo "    $$objective"; \
-			echo ""; \
-		fi \
+	@for room in rooms/room-*/ rooms/boss-*/; do \
+		if [ -d "$$room" ]; then \
+			room_name=$$(basename "$$room"); \
+			if [ -f "$$room/OBJECTIVE.md" ]; then \
+				objective=$$(head -n 3 "$$room/OBJECTIVE.md" | tail -n 1); \
+				echo -e "  $(GREEN)$$room_name$(NC)"; \
+				echo "    $$objective"; \
+				echo ""; \
+			elif [ -f "$$room/INCIDENT.md" ]; then \
+				objective=$$(head -n 3 "$$room/INCIDENT.md" | tail -n 1); \
+				echo -e "  $(GREEN)$$room_name$(NC) $(YELLOW)[BOSS]$(NC)"; \
+				echo "    $$objective"; \
+				echo ""; \
+			fi; \
+		fi; \
 	done
 
 .PHONY: room-apply
@@ -127,11 +135,13 @@ room-escape-test: _check-room ## Validate you escaped (fixed the room)
 	fi
 
 .PHONY: room-objective
-room-objective: _check-room ## Show room objective
+room-objective: _check-room ## Show room objective/incident
 	@if [ -f "rooms/$(ROOM)/OBJECTIVE.md" ]; then \
 		cat "rooms/$(ROOM)/OBJECTIVE.md"; \
+	elif [ -f "rooms/$(ROOM)/INCIDENT.md" ]; then \
+		cat "rooms/$(ROOM)/INCIDENT.md"; \
 	else \
-		echo -e "$(RED)Error: OBJECTIVE.md not found for room '$(ROOM)'$(NC)"; \
+		echo -e "$(RED)Error: OBJECTIVE.md or INCIDENT.md not found for room '$(ROOM)'$(NC)"; \
 		exit 1; \
 	fi
 
@@ -187,12 +197,19 @@ _check-room-files:
 			missing="$$missing $$file"; \
 		fi; \
 	done; \
+	if [ ! -f "rooms/$(ROOM)/OBJECTIVE.md" ] && [ ! -f "rooms/$(ROOM)/INCIDENT.md" ]; then \
+		missing="$$missing OBJECTIVE.md_or_INCIDENT.md"; \
+	fi; \
 	if [ -n "$$missing" ]; then \
 		echo -e "$(RED)Error: Room '$(ROOM)' is incomplete$(NC)"; \
 		echo ""; \
 		echo "Missing required files:"; \
 		for file in $$missing; do \
-			echo -e "  $(RED)✗$(NC) $$file"; \
+			if [ "$$file" = "OBJECTIVE.md_or_INCIDENT.md" ]; then \
+				echo -e "  $(RED)✗$(NC) OBJECTIVE.md or INCIDENT.md"; \
+			else \
+				echo -e "  $(RED)✗$(NC) $$file"; \
+			fi; \
 		done; \
 		echo ""; \
 		echo "See docs/RoomContract.md for room requirements."; \

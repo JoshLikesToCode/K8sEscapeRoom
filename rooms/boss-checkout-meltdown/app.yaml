@@ -1,0 +1,71 @@
+# Boss Room: Checkout Meltdown
+# MULTIPLE FAILURES:
+#   1. Service selector mismatch - no endpoints
+#   2. Readiness probe on wrong port - pods never ready
+#
+# Both issues must be fixed for the service to work!
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-api
+  labels:
+    app: checkout-api
+    app.kubernetes.io/name: checkout-api
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    k8sescaperoom.dev/room: boss-checkout-meltdown
+    k8sescaperoom.dev/difficulty: advanced
+    k8sescaperoom.dev/failure-mode: MultipleFailures
+  annotations:
+    k8sescaperoom.dev/description: "Service selector mismatch + readiness probe misconfigured"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: checkout-api
+  template:
+    metadata:
+      labels:
+        # Correct label on pods
+        app: checkout-api
+    spec:
+      containers:
+        - name: api
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+          # BUG #2: Readiness probe on wrong port!
+          # nginx listens on 80, but probe checks 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-service
+  labels:
+    app.kubernetes.io/name: checkout-service
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    k8sescaperoom.dev/room: boss-checkout-meltdown
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  # BUG #1: Wrong selector!
+  # Deployment uses "app: checkout-api" but service looks for "app: checkout"
+  selector:
+    app: checkout

@@ -15,7 +15,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Required files per RoomContract.md
-REQUIRED_FILES=("app.yaml" "OBJECTIVE.md" "HINTS.md" "SOLUTION.md" "tests.sh")
+# Note: OBJECTIVE.md OR INCIDENT.md is required (boss rooms use INCIDENT.md)
+REQUIRED_FILES=("app.yaml" "HINTS.md" "SOLUTION.md" "tests.sh")
+OBJECTIVE_FILES=("OBJECTIVE.md" "INCIDENT.md")  # One of these is required
 
 #######################################
 # Print error and exit
@@ -37,7 +39,7 @@ validate_room() {
         echo -e "${RED}Error: Room '${room_name}' not found${NC}"
         echo ""
         echo "Available rooms:"
-        for room in "$PROJECT_ROOT"/rooms/room-*/; do
+        for room in "$PROJECT_ROOT"/rooms/room-*/ "$PROJECT_ROOT"/rooms/boss-*/; do
             if [ -d "$room" ]; then
                 echo "  $(basename "$room")"
             fi
@@ -55,6 +57,18 @@ validate_room() {
         fi
     done
 
+    # Check for OBJECTIVE.md OR INCIDENT.md (one is required)
+    local has_objective=false
+    for file in "${OBJECTIVE_FILES[@]}"; do
+        if [ -f "$room_dir/$file" ]; then
+            has_objective=true
+            break
+        fi
+    done
+    if [ "$has_objective" = false ]; then
+        missing+=("OBJECTIVE.md or INCIDENT.md")
+    fi
+
     if [ ${#missing[@]} -gt 0 ]; then
         echo -e "${RED}Error: Room '${room_name}' is incomplete${NC}"
         echo ""
@@ -65,6 +79,11 @@ validate_room() {
         echo ""
         echo "Present files:"
         for file in "${REQUIRED_FILES[@]}"; do
+            if [ -f "$room_dir/$file" ]; then
+                echo -e "  ${GREEN}✓${NC} $file"
+            fi
+        done
+        for file in "${OBJECTIVE_FILES[@]}"; do
             if [ -f "$room_dir/$file" ]; then
                 echo -e "  ${GREEN}✓${NC} $file"
             fi
