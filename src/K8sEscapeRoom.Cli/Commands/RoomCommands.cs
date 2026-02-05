@@ -17,6 +17,7 @@ public static class RoomCommands
             CreateApplyCommand(roomService),
             CreateResetCommand(roomService),
             CreateTestCommand(roomService),
+            CreateVerifyCommand(roomService),
             CreateObjectiveCommand(roomService),
             CreateHintCommand(roomService),
             CreateSolutionCommand(roomService)
@@ -119,6 +120,28 @@ public static class RoomCommands
                 return;
 
             var result = await roomService.TestRoomAsync(roomName);
+            Environment.ExitCode = result.ExitCode;
+        }, roomArg);
+
+        return command;
+    }
+
+    /// <summary>
+    /// escape room verify <name> → make room-verify ROOM=<name>
+    /// Validates that the user has successfully escaped (fixed the room).
+    /// </summary>
+    private static Command CreateVerifyCommand(RoomService roomService)
+    {
+        var command = new Command("verify", "Verify you've escaped (fixed the room)");
+        var roomArg = new Argument<string>("name", "The room name");
+        command.AddArgument(roomArg);
+
+        command.SetHandler(async (string roomName) =>
+        {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
+            var result = await roomService.VerifyRoomAsync(roomName);
             Environment.ExitCode = result.ExitCode;
         }, roomArg);
 

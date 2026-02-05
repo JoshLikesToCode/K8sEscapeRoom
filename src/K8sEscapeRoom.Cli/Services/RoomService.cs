@@ -27,6 +27,7 @@ public class RoomService
 
     /// <summary>
     /// Discovers rooms in the specified directory.
+    /// Includes both room-* and boss-* directories.
     /// </summary>
     public static IReadOnlyList<string> DiscoverRooms(string roomsDirectory)
     {
@@ -37,7 +38,7 @@ public class RoomService
 
         return Directory.GetDirectories(roomsDirectory)
             .Select(Path.GetFileName)
-            .Where(name => name is not null && name.StartsWith("room-"))
+            .Where(name => name is not null && (name.StartsWith("room-") || name.StartsWith("boss-")))
             .Cast<string>()
             .OrderBy(name => name)
             .ToList();
@@ -69,9 +70,10 @@ public class RoomService
     }
 
     /// <summary>
-    /// Gets the room's objective.
+    /// Gets the room's objective (OBJECTIVE.md or INCIDENT.md for boss rooms).
     /// </summary>
-    public string? GetObjective(string roomName) => GetRoomDocument(roomName, "OBJECTIVE.md");
+    public string? GetObjective(string roomName) =>
+        GetRoomDocument(roomName, "OBJECTIVE.md") ?? GetRoomDocument(roomName, "INCIDENT.md");
 
     /// <summary>
     /// Gets the room's hints.
@@ -162,6 +164,17 @@ public class RoomService
         string roomName, CancellationToken ct = default)
     {
         return _processRunner.RunMakeAsync("room-test", _projectRoot,
+            new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
+    }
+
+    /// <summary>
+    /// Verifies that a room has been escaped (fixed).
+    /// Maps to: make room-verify ROOM=...
+    /// </summary>
+    public Task<ProcessRunner.ProcessResult> VerifyRoomAsync(
+        string roomName, CancellationToken ct = default)
+    {
+        return _processRunner.RunMakeAsync("room-verify", _projectRoot,
             new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
     }
 }

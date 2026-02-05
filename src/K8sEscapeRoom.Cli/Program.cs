@@ -17,6 +17,7 @@ namespace K8sEscapeRoom.Cli;
 ///   escape room apply <name> → make room-apply ROOM=<name>
 ///   escape room reset <name> → make room-reset ROOM=<name>
 ///   escape room test <name>  → make room-test ROOM=<name>
+///   escape room verify <name> → make room-verify ROOM=<name>
 ///   escape room objective <name> → make room-objective ROOM=<name>
 ///   escape room hint <name>  → make room-hint ROOM=<name>
 ///   escape room solution <name> → make room-solution ROOM=<name>

@@ -40,7 +40,7 @@ help: ## Show all available commands
 	@echo -e "  $(GREEN)room-apply ROOM=<name>$(NC)     Enter a room (apply broken state)"
 	@echo -e "  $(GREEN)room-reset ROOM=<name>$(NC)     Reset a room (delete resources)"
 	@echo -e "  $(GREEN)room-test ROOM=<name>$(NC)      Validate room is in broken state"
-	@echo -e "  $(GREEN)room-escape-test ROOM=<name>$(NC) Validate you escaped (fixed it)"
+	@echo -e "  $(GREEN)room-verify ROOM=<name>$(NC)    Verify you escaped (fixed it)"
 	@echo -e "  $(GREEN)room-objective ROOM=<name>$(NC) Show room objective"
 	@echo -e "  $(GREEN)room-hint ROOM=<name>$(NC)      Show hints"
 	@echo -e "  $(GREEN)room-solution ROOM=<name>$(NC)  Show solution"
@@ -117,22 +117,10 @@ room-test: _check-room _check-room-files ## Validate room is in broken state
 
 .PHONY: room-escape-test
 room-escape-test: _check-room ## Validate you escaped (fixed the room)
-	@if [ -f "rooms/$(ROOM)/escape-tests.sh" ]; then \
-		if [ ! -x "rooms/$(ROOM)/escape-tests.sh" ]; then \
-			echo -e "$(RED)Error: escape-tests.sh is not executable$(NC)"; \
-			echo "Fix with: chmod +x rooms/$(ROOM)/escape-tests.sh"; \
-			exit 1; \
-		fi; \
-		./rooms/$(ROOM)/escape-tests.sh; \
-	else \
-		echo -e "$(YELLOW)Note: escape-tests.sh not found for room '$(ROOM)'$(NC)"; \
-		echo "This room doesn't have escape validation yet."; \
-		echo ""; \
-		echo "Manually verify:"; \
-		echo "  kubectl get pods -n escape-$(ROOM)"; \
-		echo ""; \
-		echo "Success criteria: Pod should be Running without restarts."; \
-	fi
+	@./scripts/room-escape-test.sh $(ROOM)
+
+.PHONY: room-verify
+room-verify: room-escape-test ## Alias for room-escape-test (verify you escaped)
 
 .PHONY: room-objective
 room-objective: _check-room ## Show room objective/incident
