@@ -56,7 +56,8 @@ fi
 test_start "Service has endpoints"
 
 ENDPOINT_COUNT=$(kubectl get endpoints "$SERVICE_NAME" -n "$NAMESPACE" \
-    -o jsonpath='{.subsets[*].addresses}' 2>/dev/null | grep -o '"ip"' | wc -l || echo "0")
+    -o jsonpath='{.subsets[*].addresses}' 2>/dev/null | grep -o '"ip"' | wc -l || true)
+ENDPOINT_COUNT=${ENDPOINT_COUNT:-0}
 
 if [ "$ENDPOINT_COUNT" -gt 0 ]; then
     test_pass "$ENDPOINT_COUNT endpoint(s)"

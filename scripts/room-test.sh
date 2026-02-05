@@ -45,18 +45,17 @@ print_pod_status() {
 }
 
 #######################################
-# Wait for pod to exist
+# Wait for any pod to exist in namespace
 #######################################
-wait_for_pod() {
+wait_for_any_pod() {
     local namespace="$1"
-    local pod_name="$2"
-    local timeout="$3"
+    local timeout="$2"
 
     local elapsed=0
-    echo -n "Waiting for pod '$pod_name' to exist"
+    echo -n "Waiting for pods to exist in namespace"
 
     while [ $elapsed -lt "$timeout" ]; do
-        if kubectl get pod "$pod_name" -n "$namespace" >/dev/null 2>&1; then
+        if kubectl get pods -n "$namespace" --no-headers 2>/dev/null | grep -q .; then
             echo -e " ${GREEN}found${NC}"
             return 0
         fi
@@ -183,9 +182,9 @@ echo -e "${CYAN}Timeout: ${MAX_WAIT_SECONDS}s${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-# Wait for pod to exist first
-if ! wait_for_pod "$NAMESPACE" "escape-app" "$MAX_WAIT_SECONDS"; then
-    echo -e "${RED}Error: Pod 'escape-app' never appeared${NC}"
+# Wait for any pod to exist first
+if ! wait_for_any_pod "$NAMESPACE" "$MAX_WAIT_SECONDS"; then
+    echo -e "${RED}Error: No pods appeared in namespace${NC}"
     print_pod_status "$NAMESPACE"
     exit 1
 fi

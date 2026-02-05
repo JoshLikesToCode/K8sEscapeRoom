@@ -23,7 +23,7 @@ echo ""
 # ============================================================================
 test_start "Pods are Running"
 
-RUNNING_COUNT=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+RUNNING_COUNT=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "Running" || true)
 
 if [ "$RUNNING_COUNT" -gt 0 ]; then
     test_pass "$RUNNING_COUNT pod(s) Running"
@@ -36,7 +36,7 @@ fi
 # ============================================================================
 test_start "Pods are Ready (1/1)"
 
-READY_PODS=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "1/1" || echo "0")
+READY_PODS=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "1/1" || true)
 
 if [ "$READY_PODS" -gt 0 ]; then
     test_pass "$READY_PODS pod(s) Ready"
@@ -49,7 +49,8 @@ fi
 # ============================================================================
 test_start "Service has endpoints"
 
-ENDPOINT_COUNT=$(kubectl get endpoints "$SERVICE_NAME" -n "$NAMESPACE" -o jsonpath='{.subsets[*].addresses}' 2>/dev/null | grep -o '"ip"' | wc -l || echo "0")
+ENDPOINT_COUNT=$(kubectl get endpoints "$SERVICE_NAME" -n "$NAMESPACE" -o jsonpath='{.subsets[*].addresses}' 2>/dev/null | grep -o '"ip"' | wc -l || true)
+ENDPOINT_COUNT=${ENDPOINT_COUNT:-0}
 
 if [ "$ENDPOINT_COUNT" -gt 0 ]; then
     test_pass "$ENDPOINT_COUNT endpoint(s)"

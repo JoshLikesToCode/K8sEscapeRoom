@@ -50,11 +50,10 @@ fi
 # ============================================================================
 test_start "ServiceAccount can list pods"
 
-CAN_LIST=$(kubectl auth can-i list pods \
+# Use -q flag for exit code based checking (0=allowed, 1=denied)
+if kubectl auth can-i list pods \
     --as="system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT}" \
-    -n "$NAMESPACE" 2>/dev/null || echo "no")
-
-if [ "$CAN_LIST" = "yes" ]; then
+    -n "$NAMESPACE" -q 2>/dev/null; then
     test_pass
 else
     test_fail "ServiceAccount still cannot list pods - check Role and RoleBinding"

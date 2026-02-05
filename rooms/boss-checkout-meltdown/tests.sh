@@ -53,7 +53,7 @@ fi
 # ============================================================================
 test_start "Pods are in Running phase"
 
-RUNNING_COUNT=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+RUNNING_COUNT=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "Running" || true)
 
 if [ "$RUNNING_COUNT" -gt 0 ]; then
     test_pass "$RUNNING_COUNT pod(s) Running"
@@ -67,7 +67,8 @@ fi
 test_start "FAILURE #1: Pods are NOT Ready (0/1)"
 
 # Check if any pod shows 1/1 Ready
-READY_PODS=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "1/1" || echo "0")
+# Note: grep -c outputs count even when 0, but exits non-zero; use || true to avoid double output
+READY_PODS=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" --no-headers 2>/dev/null | grep -c "1/1" || true)
 
 if [ "$READY_PODS" -eq 0 ]; then
     test_pass "All pods show 0/1 Ready (probe failing as expected)"
