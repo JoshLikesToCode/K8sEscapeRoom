@@ -201,6 +201,35 @@ K8sEscapeRoom/
     └── ci.yml               # CI pipeline
 ```
 
+## Web Development (Hosted Experience)
+
+The project includes an optional hosted web experience for progress tracking. See [docs/Hosting.md](docs/Hosting.md) for architecture details.
+
+### Running Web + API Locally
+
+```bash
+# Terminal 1: Start the API (requires Azure Functions Core Tools)
+cd api
+cp local.settings.template.json local.settings.json
+func start
+# API runs at http://localhost:7071
+
+# Terminal 2: Start the web app
+cd web
+npm install
+npm run dev
+# Web runs at http://localhost:3000
+```
+
+### Project Components
+
+| Component | Path | Technology |
+|-----------|------|------------|
+| Escape Rooms | `/rooms` | Kubernetes manifests, shell scripts |
+| CLI | `/src/K8sEscapeRoom.Cli` | .NET 8 |
+| Web Frontend | `/web` | Next.js 14, TypeScript, Tailwind |
+| API Backend | `/api` | .NET 8 Azure Functions |
+
 ## Creating New Rooms
 
 Use the room generator to scaffold a new room:
