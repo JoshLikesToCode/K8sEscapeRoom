@@ -44,13 +44,6 @@ export function LevelCard({ level }: { level: Level }) {
     <Link href={`/play/${level.id}`} className="relative group block">
       <div className="absolute inset-0 bg-gradient-to-r from-k8s-blue/20 to-purple-500/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
       <div className="relative bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-k8s-blue/50 transition-colors">
-        {/* Status indicator */}
-        {level.completed && (
-          <div className="absolute top-4 right-4">
-            <CompletedBadge />
-          </div>
-        )}
-
         {/* Icon */}
         <div className="flex items-start justify-between mb-4">
           <div
@@ -61,7 +54,7 @@ export function LevelCard({ level }: { level: Level }) {
           >
             {level.completed ? '✓' : '🔧'}
           </div>
-          <DifficultyBadge difficulty={level.difficulty} />
+          {level.completed ? <CompletedBadge /> : <DifficultyBadge difficulty={level.difficulty} />}
         </div>
 
         {/* Content */}
