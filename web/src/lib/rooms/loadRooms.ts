@@ -11,27 +11,67 @@ import * as path from 'path'
 import * as yaml from 'yaml'
 import type { Room, RoomMetadata, Difficulty } from './types'
 
+/** Debug logging - only in dev or when DEBUG_ROOMS=1 */
+const DEBUG = process.env.DEBUG_ROOMS === '1' || process.env.NODE_ENV !== 'production'
+
+function debugLog(...args: unknown[]) {
+  if (DEBUG) {
+    console.log('[rooms]', ...args)
+  }
+}
+
+function debugWarn(...args: unknown[]) {
+  if (DEBUG) {
+    console.warn('[rooms]', ...args)
+  }
+}
+
+/** Max directory levels to search upward for repo root */
+const MAX_SEARCH_DEPTH = 10
+
+/**
+ * Find the repository root by walking upward from cwd.
+ * Repo root is identified by having both 'rooms/' directory and 'Makefile'.
+ */
+function findRepoRoot(): string {
+  let current = process.cwd()
+
+  for (let depth = 0; depth < MAX_SEARCH_DEPTH; depth++) {
+    const roomsDir = path.join(current, 'rooms')
+    const makefile = path.join(current, 'Makefile')
+
+    try {
+      const hasRooms = fs.statSync(roomsDir).isDirectory()
+      const hasMakefile = fs.statSync(makefile).isFile()
+
+      if (hasRooms && hasMakefile) {
+        return current
+      }
+    } catch {
+      // Directory markers not found at this level, continue upward
+    }
+
+    const parent = path.dirname(current)
+    if (parent === current) {
+      // Reached filesystem root
+      break
+    }
+    current = parent
+  }
+
+  throw new Error(
+    `Could not find K8sEscapeRoom repo root (looking for rooms/ + Makefile). ` +
+      `Started from: ${process.cwd()}, searched ${MAX_SEARCH_DEPTH} levels up.`
+  )
+}
+
 /**
  * Resolve the path to the rooms directory.
- * Works whether cwd is /web or repo root.
+ * Cross-platform: works on Windows, Linux, macOS regardless of cwd depth.
  */
 function getRoomsDir(): string {
-  const cwd = process.cwd()
-
-  // If we're in the web directory, go up one level
-  if (cwd.endsWith('/web') || cwd.endsWith('\\web')) {
-    return path.resolve(cwd, '..', 'rooms')
-  }
-
-  // If cwd contains /web/ somewhere, we might be in a subdirectory
-  const webIndex = cwd.indexOf('/web')
-  if (webIndex !== -1) {
-    const repoRoot = cwd.substring(0, webIndex)
-    return path.resolve(repoRoot, 'rooms')
-  }
-
-  // Assume we're at repo root
-  return path.resolve(cwd, 'rooms')
+  const repoRoot = findRepoRoot()
+  return path.join(repoRoot, 'rooms')
 }
 
 /**
@@ -87,7 +127,7 @@ function parseAppYaml(yamlContent: string): RoomMetadata {
       }
     }
   } catch (err) {
-    console.warn('Failed to parse app.yaml:', err)
+    debugWarn('Failed to parse app.yaml:', err)
   }
 
   return defaultMetadata
@@ -182,9 +222,9 @@ function loadRoom(roomsDir: string, folderId: string): Room | null {
     ? metadata.description.split('.')[0] // Use first sentence of description
     : folderToTitle(folderId)
 
-  // Log warnings to server console
+  // Log warnings in debug mode
   if (warnings.length > 0) {
-    console.warn(`[Room ${folderId}] Warnings:`, warnings)
+    debugWarn(`Room ${folderId}:`, warnings)
   }
 
   return {
@@ -209,14 +249,13 @@ function loadRoom(roomsDir: string, folderId: string): Room | null {
 export const loadAllRooms = cache(async (): Promise<Room[]> => {
   const roomsDir = getRoomsDir()
 
-  // Log for debugging
-  console.log(`[loadAllRooms] Scanning rooms directory: ${roomsDir}`)
+  debugLog(`Scanning rooms directory: ${roomsDir}`)
 
   let entries: string[]
   try {
     entries = fs.readdirSync(roomsDir)
   } catch (err) {
-    console.error(`[loadAllRooms] Failed to read rooms directory:`, err)
+    debugWarn('Failed to read rooms directory:', err)
     return []
   }
 
@@ -225,7 +264,7 @@ export const loadAllRooms = cache(async (): Promise<Room[]> => {
     (name) => name.startsWith('room-') || name.startsWith('boss-')
   )
 
-  console.log(`[loadAllRooms] Found ${roomFolders.length} room folders`)
+  debugLog(`Found ${roomFolders.length} room folders`)
 
   // Load each room
   const rooms: Room[] = []

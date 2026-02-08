@@ -19,12 +19,11 @@ const difficultyColors: Record<string, string> = {
 }
 
 interface PageProps {
-  params: Promise<{ roomId: string }>
+  params: { roomId: string }
 }
 
 export default async function RoomDetailPage({ params }: PageProps) {
-  const { roomId } = await params
-  const room = await getRoomById(roomId)
+  const room = await getRoomById(params.roomId)
 
   if (!room) {
     notFound()
@@ -133,7 +132,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
             <p className="text-gray-400 mb-4">
               Run this command in your terminal to set up the room:
             </p>
-            <SingleCommand command={`make room-apply ROOM=${roomId}`} />
+            <SingleCommand command={`make room-apply ROOM=${params.roomId}`} />
             <p className="text-xs text-gray-500 mt-3">
               This creates the namespace{' '}
               <code className="text-terminal-green">{room.namespace}</code> with the broken
@@ -143,15 +142,15 @@ export default async function RoomDetailPage({ params }: PageProps) {
             <div className="mt-4 pt-4 border-t border-gray-800">
               <p className="text-gray-400 text-sm mb-3">Other useful commands:</p>
               <div className="space-y-2">
-                <SingleCommand command={`make room-test ROOM=${roomId}`} />
+                <SingleCommand command={`make room-test ROOM=${params.roomId}`} />
                 <p className="text-xs text-gray-500 ml-1">Verify the room is in the expected broken state</p>
               </div>
               <div className="space-y-2 mt-3">
-                <SingleCommand command={`make room-escape-test ROOM=${roomId}`} />
+                <SingleCommand command={`make room-escape-test ROOM=${params.roomId}`} />
                 <p className="text-xs text-gray-500 ml-1">Test if you have successfully fixed all issues</p>
               </div>
               <div className="space-y-2 mt-3">
-                <SingleCommand command={`make room-reset ROOM=${roomId}`} />
+                <SingleCommand command={`make room-reset ROOM=${params.roomId}`} />
                 <p className="text-xs text-gray-500 ml-1">Reset the room to try again</p>
               </div>
             </div>
@@ -173,7 +172,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
           )}
 
           {/* Proof Submit */}
-          <ProofSubmit roomId={roomId} />
+          <ProofSubmit roomId={params.roomId} />
 
           {/* Solution (spoiler) */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
@@ -199,7 +198,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
 
                 <p className="text-sm text-gray-400">Run this to see the full solution:</p>
                 <div className="mt-2">
-                  <SingleCommand command={`make room-solution ROOM=${roomId}`} />
+                  <SingleCommand command={`make room-solution ROOM=${params.roomId}`} />
                 </div>
 
                 {room.solutionMarkdown && (

@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 
 export interface Level {
@@ -14,12 +12,6 @@ export interface Level {
 }
 
 export function LevelCard({ level }: { level: Level }) {
-  const difficultyColors = {
-    beginner: 'bg-green-500/20 text-green-400 border-green-500/30',
-    intermediate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    advanced: 'bg-red-500/20 text-red-400 border-red-500/30',
-  }
-
   if (level.locked) {
     return (
       <div className="relative group">

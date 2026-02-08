@@ -17,9 +17,7 @@ const config: Config = {
       },
     },
   },
-  // Note: line-clamp is built into Tailwind v3.3+, but we include
-  // the plugin explicitly for clarity and backwards compatibility
-  plugins: [require('@tailwindcss/line-clamp')],
+  plugins: [],
 }
 
 export default config

@@ -8,6 +8,9 @@ export interface ParsedHint {
   content: string
 }
 
+/** Regex to match hint headers like "## Hint Level 1: Title Here" */
+const HINT_HEADER_PATTERN = /^##\s*Hint\s+Level\s+(\d+):\s*(.+)$/im
+
 /**
  * Parse hints markdown into structured hints.
  * Expected format:
@@ -26,27 +29,21 @@ export function parseHintsMarkdown(markdown: string): ParsedHint[] {
 
   const hints: ParsedHint[] = []
 
-  // Split by the hint level headers
-  const hintPattern = /##\s*Hint\s+Level\s+(\d+):\s*(.+)/gi
-  const sections = markdown.split(/---+/).filter((s) => s.trim())
+  // Split by horizontal rules (--- or more dashes)
+  const sections = markdown.split(/\n-{3,}\n/).filter((s) => s.trim())
 
   for (const section of sections) {
-    const match = hintPattern.exec(section)
-    hintPattern.lastIndex = 0 // Reset regex state
+    const match = HINT_HEADER_PATTERN.exec(section)
 
     if (match) {
       const level = parseInt(match[1], 10)
       const title = match[2].trim()
 
-      // Get content after the header
+      // Get content after the header line
       const headerEnd = section.indexOf(match[0]) + match[0].length
       const content = section.substring(headerEnd).trim()
 
-      hints.push({
-        level,
-        title,
-        content,
-      })
+      hints.push({ level, title, content })
     }
   }
 

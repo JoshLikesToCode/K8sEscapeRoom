@@ -1,3 +1,5 @@
+// 'use client' required: react-markdown uses browser-only APIs internally
+// (dynamic imports, DOM measurements for syntax highlighting plugins)
 'use client'
 
 import ReactMarkdown from 'react-markdown'
