@@ -2,16 +2,22 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import type { User, AuthState, UserProgress, AuthMeResponse } from './types'
+import { apiGet, apiPost, ApiError } from '../api'
 
-/** Dev mode mock user for local development */
+/** Dev mode mock user for local development - OPT-IN only */
 const DEV_MOCK_USER: User = {
   id: 'dev-user-123',
   username: 'DevUser',
   provider: 'github',
 }
 
-/** Whether we're in development mode without auth */
-const IS_DEV = process.env.NODE_ENV === 'development'
+/**
+ * Check if dev mock auth is enabled.
+ * Must explicitly set NEXT_PUBLIC_DEV_AUTH=1 to enable mock auth.
+ */
+const isDevAuthEnabled = (): boolean => {
+  return process.env.NEXT_PUBLIC_DEV_AUTH === '1'
+}
 
 /**
  * Parse Azure Static Web Apps auth response into User
@@ -31,22 +37,21 @@ function parseAuthResponse(data: AuthMeResponse): User | null {
  * Fetch current user from Azure SWA auth endpoint
  */
 async function fetchUser(): Promise<User | null> {
+  // If dev auth is explicitly enabled, use mock user
+  if (isDevAuthEnabled()) {
+    return DEV_MOCK_USER
+  }
+
   try {
     const res = await fetch('/.auth/me')
     if (!res.ok) {
-      // In dev without SWA, this will 404 - use mock user
-      if (IS_DEV) {
-        return DEV_MOCK_USER
-      }
+      // Not authenticated or SWA not available
       return null
     }
     const data: AuthMeResponse = await res.json()
     return parseAuthResponse(data)
   } catch {
-    // Network error or not running on SWA - use mock in dev
-    if (IS_DEV) {
-      return DEV_MOCK_USER
-    }
+    // Network error or not running on SWA - unauthenticated
     return null
   }
 }
@@ -142,9 +147,11 @@ interface ProgressContextValue {
   completedRooms: Set<string>
   /** Whether progress is loading */
   isLoading: boolean
+  /** Error message if API is unavailable */
+  error: string | null
   /** Check if a room is completed */
   isRoomCompleted: (roomId: string) => boolean
-  /** Mark a room as complete (calls API) */
+  /** Mark a room as complete (calls API). Throws on failure. */
   markRoomComplete: (roomId: string) => Promise<void>
   /** Refresh progress from API */
   refresh: () => Promise<void>
@@ -160,22 +167,32 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   const { user, isAuthenticated } = useAuth()
   const [completedRooms, setCompletedRooms] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) {
       setCompletedRooms(new Set())
+      setError(null)
       return
     }
 
     setIsLoading(true)
+    setError(null)
     try {
-      const res = await fetch('/api/me')
-      if (res.ok) {
-        const data: UserProgress = await res.json()
-        setCompletedRooms(new Set(data.completedRooms))
+      const data = await apiGet<UserProgress>('/api/me')
+      setCompletedRooms(new Set(data.completedRooms))
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.isUnauthorized) {
+          // User session expired or invalid - treat as unauthenticated
+          setCompletedRooms(new Set())
+        } else {
+          setError(`API error: ${err.message}`)
+        }
+      } else {
+        // Network error
+        setError('Unable to connect to API')
       }
-    } catch {
-      // API not available - keep empty progress
     } finally {
       setIsLoading(false)
     }
@@ -191,23 +208,21 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   )
 
   const markRoomComplete = useCallback(async (roomId: string) => {
-    if (!isAuthenticated) return
-
-    try {
-      const res = await fetch(`/api/rooms/${roomId}/complete`, {
-        method: 'POST',
-      })
-      if (res.ok) {
-        setCompletedRooms((prev) => new Set([...Array.from(prev), roomId]))
-      }
-    } catch {
-      // Failed to mark complete
+    if (!isAuthenticated) {
+      throw new Error('Must be authenticated to mark rooms complete')
     }
+
+    // Call API - throws on failure
+    await apiPost<{ success: boolean }>(`/api/rooms/${roomId}/complete`)
+
+    // Only update local state if API call succeeded
+    setCompletedRooms((prev) => new Set([...Array.from(prev), roomId]))
   }, [isAuthenticated])
 
   const value: ProgressContextValue = {
     completedRooms,
     isLoading,
+    error,
     isRoomCompleted,
     markRoomComplete,
     refresh,

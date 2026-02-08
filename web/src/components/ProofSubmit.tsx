@@ -5,50 +5,26 @@ import { useAuth, useProgress } from '@/lib/auth'
 
 export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?: () => void }) {
   const { isAuthenticated } = useAuth()
-  const { isRoomCompleted, markRoomComplete } = useProgress()
-  const [token, setToken] = useState('')
+  const { isRoomCompleted, markRoomComplete, error: progressError } = useProgress()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   const isCompleted = isRoomCompleted(roomId)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!token.trim()) {
-      setErrorMessage('Please enter a proof token')
-      setStatus('error')
-      return
-    }
-
+  // Mark room complete (temporary until proof verification is implemented)
+  const handleMarkComplete = async () => {
     setStatus('loading')
     setErrorMessage('')
 
-    // Simulate API call (no real API yet)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // For now, just show success for demo purposes
-    // In real implementation, this would validate with the API
-    if (token.startsWith('eyJ')) {
-      setStatus('success')
-      await markRoomComplete(roomId)
-      onSuccess?.()
-    } else {
-      setStatus('error')
-      setErrorMessage('Invalid proof token. Make sure you copied the entire token from the CLI.')
-    }
-  }
-
-  // Temporary dev button to mark room complete without proof
-  const handleDevComplete = async () => {
-    setStatus('loading')
     try {
       await markRoomComplete(roomId)
       setStatus('success')
       onSuccess?.()
-    } catch {
+    } catch (err) {
       setStatus('error')
-      setErrorMessage('Failed to mark room as complete')
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Failed to mark room as complete. Please try again.'
+      )
     }
   }
 
@@ -61,7 +37,7 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
         </div>
         <h3 className="text-lg font-semibold text-terminal-green mb-2">Room Escaped!</h3>
         <p className="text-sm text-gray-400">
-          {status === 'success' ? 'Congratulations! Your progress has been saved.' : 'You have already completed this room.'}
+          {status === 'success' ? 'Your progress has been saved.' : 'You have already completed this room.'}
         </p>
       </div>
     )
@@ -73,11 +49,11 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
           <KeyIcon className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-semibold text-gray-400">Submit Proof Token</h3>
+          <h3 className="text-sm font-semibold text-gray-400">Track Progress</h3>
         </div>
         <div className="p-4 text-center">
           <p className="text-sm text-gray-500 mb-4">
-            Login to track your progress and submit proof tokens.
+            Login to track your progress across sessions.
           </p>
           <a
             href="/.auth/login/github"
@@ -95,45 +71,40 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
     <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
         <KeyIcon className="h-4 w-4 text-k8s-blue" />
-        <h3 className="text-sm font-semibold text-white">Submit Proof Token</h3>
+        <h3 className="text-sm font-semibold text-white">Mark Room Complete</h3>
       </div>
-      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <div className="p-4 space-y-4">
         <div>
           <p className="text-sm text-gray-400 mb-3">
-            After fixing the room, run the verify command and paste the proof token below:
+            After fixing all issues and verifying the room is working, click below to mark it complete.
           </p>
           <div className="bg-gray-800 rounded-lg p-3 mb-3">
             <code className="text-sm text-terminal-green font-mono">
-              $ make room-verify ROOM={roomId}
+              $ make room-escape-test ROOM={roomId}
             </code>
           </div>
+          <p className="text-xs text-gray-500">
+            Run the escape test locally to verify your fix before marking complete.
+          </p>
         </div>
 
-        <div>
-          <label htmlFor="proof-token" className="block text-xs text-gray-500 mb-2">
-            Proof Token
-          </label>
-          <textarea
-            id="proof-token"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIs..."
-            className={`
-              w-full h-24 px-3 py-2 bg-gray-800 border rounded-lg text-sm font-mono
-              placeholder-gray-600 focus:outline-none focus:ring-2 transition-colors resize-none
-              ${status === 'error'
-                ? 'border-red-500/50 focus:ring-red-500/30 text-red-400'
-                : 'border-gray-700 focus:ring-k8s-blue/30 text-white'
-              }
-            `}
-          />
-          {status === 'error' && errorMessage && (
-            <p className="mt-2 text-xs text-red-400">{errorMessage}</p>
-          )}
-        </div>
+        {/* Show API error if any */}
+        {progressError && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-xs text-red-400">{progressError}</p>
+          </div>
+        )}
+
+        {/* Error from marking complete */}
+        {status === 'error' && errorMessage && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-xs text-red-400">{errorMessage}</p>
+          </div>
+        )}
 
         <button
-          type="submit"
+          type="button"
+          onClick={handleMarkComplete}
           disabled={status === 'loading'}
           className={`
             w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all
@@ -146,28 +117,17 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
           {status === 'loading' ? (
             <span className="flex items-center justify-center gap-2">
               <LoadingSpinner />
-              Verifying...
+              Saving...
             </span>
           ) : (
-            'Verify & Submit'
+            'Mark as Complete'
           )}
         </button>
 
-        {/* Temporary dev button - will be removed when proof verification is implemented */}
-        <div className="pt-2 border-t border-gray-800">
-          <p className="text-xs text-gray-600 mb-2 text-center">
-            Development only - proof verification coming soon
-          </p>
-          <button
-            type="button"
-            onClick={handleDevComplete}
-            disabled={status === 'loading'}
-            className="w-full py-2 px-4 rounded-lg text-sm font-medium bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Mark Complete (Dev)
-          </button>
-        </div>
-      </form>
+        <p className="text-xs text-gray-600 text-center">
+          Cryptographic proof verification coming in a future update.
+        </p>
+      </div>
     </div>
   )
 }
