@@ -1,24 +1,17 @@
-'use client'
-
 import Link from 'next/link'
 
 export interface Level {
   id: string
   name: string
   description: string
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'unknown'
   failureMode: string
   completed: boolean
   locked?: boolean
+  isBoss?: boolean
 }
 
 export function LevelCard({ level }: { level: Level }) {
-  const difficultyColors = {
-    beginner: 'bg-green-500/20 text-green-400 border-green-500/30',
-    intermediate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    advanced: 'bg-red-500/20 text-red-400 border-red-500/30',
-  }
-
   if (level.locked) {
     return (
       <div className="relative group">
@@ -49,10 +42,10 @@ export function LevelCard({ level }: { level: Level }) {
           <div
             className={`
               h-12 w-12 rounded-xl flex items-center justify-center text-lg
-              ${level.completed ? 'bg-terminal-green/20 text-terminal-green' : 'bg-k8s-blue/20 text-k8s-blue'}
+              ${level.completed ? 'bg-terminal-green/20 text-terminal-green' : level.isBoss ? 'bg-purple-500/20 text-purple-400' : 'bg-k8s-blue/20 text-k8s-blue'}
             `}
           >
-            {level.completed ? '✓' : '🔧'}
+            {level.completed ? '✓' : level.isBoss ? '👑' : '🔧'}
           </div>
           {level.completed ? <CompletedBadge /> : <DifficultyBadge difficulty={level.difficulty} />}
         </div>
@@ -65,6 +58,7 @@ export function LevelCard({ level }: { level: Level }) {
 
         {/* Tags */}
         <div className="flex items-center gap-2 flex-wrap">
+          {level.isBoss && <BossBadge />}
           <FailureModeBadge mode={level.failureMode} />
         </div>
 
@@ -78,10 +72,11 @@ export function LevelCard({ level }: { level: Level }) {
 }
 
 function DifficultyBadge({ difficulty }: { difficulty: Level['difficulty'] }) {
-  const colors = {
+  const colors: Record<Level['difficulty'], string> = {
     beginner: 'bg-green-500/20 text-green-400 border-green-500/30',
     intermediate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
     advanced: 'bg-red-500/20 text-red-400 border-red-500/30',
+    unknown: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   }
 
   return (
@@ -89,6 +84,14 @@ function DifficultyBadge({ difficulty }: { difficulty: Level['difficulty'] }) {
       className={`px-2 py-1 rounded-md text-xs font-medium border capitalize ${colors[difficulty]}`}
     >
       {difficulty}
+    </span>
+  )
+}
+
+function BossBadge() {
+  return (
+    <span className="px-2 py-1 rounded-md text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+      BOSS
     </span>
   )
 }
