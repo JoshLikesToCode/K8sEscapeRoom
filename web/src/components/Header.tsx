@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { UserIcon, ServerIcon } from '@/components/icons'
 
 export function Header() {
   return (
@@ -18,9 +19,9 @@ export function Header() {
 
         {/* Right side - User placeholder */}
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400">
-            <span className="text-terminal-green">●</span>
-            <span>Cluster Connected</span>
+          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700">
+            <ServerIcon className="h-4 w-4 text-k8s-blue" />
+            <span>BYO Cluster</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
@@ -31,23 +32,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  )
-}
-
-function UserIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.5}
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-      />
-    </svg>
   )
 }

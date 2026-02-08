@@ -56,7 +56,7 @@ export default function Home() {
               Play Now
             </Link>
             <a
-              href="https://github.com/your-repo/k8s-escape-room"
+              href="https://github.com/JoshLikesToCode/K8sEscapeRoom"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
@@ -99,7 +99,10 @@ export default function Home() {
               Documentation
             </a>
             {' · '}
-            <a href="#" className="text-gray-400 hover:text-white">
+            <a
+              href="https://github.com/JoshLikesToCode/K8sEscapeRoom"
+              className="text-gray-400 hover:text-white"
+            >
               GitHub
             </a>
           </p>
