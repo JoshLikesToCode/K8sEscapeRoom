@@ -2,25 +2,26 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth, useProgress } from '@/lib/auth'
 
-// Fake levels for now
-const FAKE_LEVELS = [
-  {
-    id: 'room-crashloop-env',
-    name: 'CrashLoop Mystery',
-    difficulty: 'beginner',
-    completed: true,
-  },
-  {
-    id: 'room-imagepull-fail',
-    name: 'Image Pull Chaos',
-    difficulty: 'beginner',
-    completed: false,
-  },
-]
+interface SidebarLevel {
+  id: string
+  name: string
+  difficulty: string
+}
 
-export function Sidebar() {
+interface SidebarProps {
+  levels: SidebarLevel[]
+}
+
+export function Sidebar({ levels }: SidebarProps) {
   const pathname = usePathname()
+  const { isAuthenticated } = useAuth()
+  const { completedRooms, isLoading: progressLoading } = useProgress()
+
+  const completedCount = completedRooms.size
+  const totalCount = levels.length
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   return (
     <aside className="fixed left-0 top-14 bottom-0 w-64 border-r border-gray-800 bg-gray-950 overflow-y-auto">
@@ -30,17 +31,49 @@ export function Sidebar() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
             Progress
           </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <ProgressCard label="Escaped" value="1" total="12" color="green" />
-            <ProgressCard label="Attempted" value="2" total="12" color="blue" />
-          </div>
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-terminal-green to-k8s-blue transition-all duration-500"
-              style={{ width: '8%' }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 text-center">8% Complete</p>
+
+          {!isAuthenticated ? (
+            <div className="p-3 bg-gray-900 rounded-lg border border-gray-800">
+              <p className="text-xs text-gray-500">
+                Login to track your progress
+              </p>
+            </div>
+          ) : progressLoading ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 animate-pulse">
+                <div className="h-8 bg-gray-800 rounded mb-1" />
+                <div className="h-3 bg-gray-800 rounded w-12" />
+              </div>
+              <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 animate-pulse">
+                <div className="h-8 bg-gray-800 rounded mb-1" />
+                <div className="h-3 bg-gray-800 rounded w-12" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <ProgressCard
+                  label="Escaped"
+                  value={completedCount.toString()}
+                  total={totalCount.toString()}
+                  color="green"
+                />
+                <ProgressCard
+                  label="Remaining"
+                  value={(totalCount - completedCount).toString()}
+                  total={totalCount.toString()}
+                  color="blue"
+                />
+              </div>
+              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-terminal-green to-k8s-blue transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 text-center">{progressPercent}% Complete</p>
+            </>
+          )}
         </div>
 
         {/* Levels Section */}
@@ -49,8 +82,10 @@ export function Sidebar() {
             Levels
           </h2>
           <nav className="space-y-1">
-            {FAKE_LEVELS.map((level) => {
+            {levels.slice(0, 10).map((level) => {
               const isActive = pathname === `/play/${level.id}`
+              const isCompleted = completedRooms.has(level.id)
+
               return (
                 <Link
                   key={level.id}
@@ -60,17 +95,23 @@ export function Sidebar() {
                     ${isActive ? 'bg-k8s-blue/20 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}
                   `}
                 >
-                  <LevelIcon completed={level.completed} />
+                  <LevelIcon completed={isCompleted} />
                   <div className="flex-1 min-w-0">
                     <p className="truncate font-medium">{level.name}</p>
                     <p className="text-xs text-gray-500 capitalize">{level.difficulty}</p>
                   </div>
-                  {level.completed && (
-                    <CheckBadge />
-                  )}
+                  {isCompleted && <CheckBadge />}
                 </Link>
               )
             })}
+            {levels.length > 10 && (
+              <Link
+                href="/play"
+                className="block px-3 py-2 text-xs text-gray-500 hover:text-gray-300"
+              >
+                +{levels.length - 10} more rooms...
+              </Link>
+            )}
           </nav>
         </div>
 
