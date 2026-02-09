@@ -2,34 +2,90 @@
 
 import { useState } from 'react'
 import { useAuth, useProgress } from '@/lib/auth'
+import { startAttempt, submitProof, ApiError, AttemptResponse } from '@/lib/api'
 
-export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?: () => void }) {
+// Dev mode flag for direct completion (bypass proof verification)
+const DEV_COMPLETE_ENABLED = process.env.NEXT_PUBLIC_DEV_COMPLETE === '1'
+
+interface ProofSubmitProps {
+  roomId: string
+  onSuccess?: () => void
+}
+
+type FlowState =
+  | { step: 'idle' }
+  | { step: 'starting' }
+  | { step: 'attempt'; nonce: string; expiresAt: Date }
+  | { step: 'submitting' }
+  | { step: 'success' }
+  | { step: 'error'; message: string }
+
+export function ProofSubmit({ roomId, onSuccess }: ProofSubmitProps) {
   const { isAuthenticated } = useAuth()
-  const { isRoomCompleted, markRoomComplete, error: progressError } = useProgress()
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [errorMessage, setErrorMessage] = useState('')
+  const { isRoomCompleted, markRoomComplete, refresh: refreshProgress } = useProgress()
+  const [flowState, setFlowState] = useState<FlowState>({ step: 'idle' })
+  const [token, setToken] = useState('')
+  // Preserve nonce and expiry across error states
+  const [currentAttempt, setCurrentAttempt] = useState<{ nonce: string; expiresAt: Date } | null>(null)
 
   const isCompleted = isRoomCompleted(roomId)
 
-  // Mark room complete (temporary until proof verification is implemented)
-  const handleMarkComplete = async () => {
-    setStatus('loading')
-    setErrorMessage('')
+  // Start a new attempt
+  const handleStartAttempt = async () => {
+    setFlowState({ step: 'starting' })
 
     try {
-      await markRoomComplete(roomId)
-      setStatus('success')
+      const response = await startAttempt(roomId)
+      const attempt = {
+        nonce: response.nonce,
+        expiresAt: new Date(response.expiresAtUtc),
+      }
+      setCurrentAttempt(attempt)
+      setFlowState({ step: 'attempt', ...attempt })
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Failed to start attempt'
+      setFlowState({ step: 'error', message })
+    }
+  }
+
+  // Submit proof token
+  const handleSubmitProof = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!token.trim()) {
+      setFlowState({ step: 'error', message: 'Please paste your proof token' })
+      return
+    }
+
+    setFlowState({ step: 'submitting' })
+
+    try {
+      await submitProof(roomId, token.trim())
+      await refreshProgress()
+      setFlowState({ step: 'success' })
       onSuccess?.()
     } catch (err) {
-      setStatus('error')
-      setErrorMessage(
-        err instanceof Error ? err.message : 'Failed to mark room as complete. Please try again.'
-      )
+      const message = err instanceof ApiError ? err.message : 'Failed to submit proof'
+      setFlowState({ step: 'error', message })
+    }
+  }
+
+  // Dev-only direct completion (hidden behind flag)
+  const handleDevComplete = async () => {
+    setFlowState({ step: 'submitting' })
+    try {
+      await markRoomComplete(roomId)
+      await refreshProgress()
+      setFlowState({ step: 'success' })
+      onSuccess?.()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to mark complete'
+      setFlowState({ step: 'error', message })
     }
   }
 
   // Show completed state
-  if (isCompleted || status === 'success') {
+  if (isCompleted || flowState.step === 'success') {
     return (
       <div className="bg-terminal-green/10 border border-terminal-green/30 rounded-xl p-6 text-center">
         <div className="h-12 w-12 rounded-full bg-terminal-green/20 flex items-center justify-center mx-auto mb-4">
@@ -37,7 +93,9 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
         </div>
         <h3 className="text-lg font-semibold text-terminal-green mb-2">Room Escaped!</h3>
         <p className="text-sm text-gray-400">
-          {status === 'success' ? 'Your progress has been saved.' : 'You have already completed this room.'}
+          {flowState.step === 'success'
+            ? 'Congratulations! Your progress has been saved.'
+            : 'You have already completed this room.'}
         </p>
       </div>
     )
@@ -49,11 +107,11 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
           <KeyIcon className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-semibold text-gray-400">Track Progress</h3>
+          <h3 className="text-sm font-semibold text-gray-400">Submit Proof</h3>
         </div>
         <div className="p-4 text-center">
           <p className="text-sm text-gray-500 mb-4">
-            Login to track your progress across sessions.
+            Login to submit proof and track your progress.
           </p>
           <a
             href="/.auth/login/github"
@@ -67,69 +125,152 @@ export function ProofSubmit({ roomId, onSuccess }: { roomId: string; onSuccess?:
     )
   }
 
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
-        <KeyIcon className="h-4 w-4 text-k8s-blue" />
-        <h3 className="text-sm font-semibold text-white">Mark Room Complete</h3>
-      </div>
-      <div className="p-4 space-y-4">
-        <div>
-          <p className="text-sm text-gray-400 mb-3">
-            After fixing all issues and verifying the room is working, click below to mark it complete.
-          </p>
-          <div className="bg-gray-800 rounded-lg p-3 mb-3">
-            <code className="text-sm text-terminal-green font-mono">
-              $ make room-escape-test ROOM={roomId}
-            </code>
-          </div>
-          <p className="text-xs text-gray-500">
-            Run the escape test locally to verify your fix before marking complete.
-          </p>
+  // Idle state: show "Start Attempt" button
+  if (flowState.step === 'idle' || flowState.step === 'starting') {
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+          <KeyIcon className="h-4 w-4 text-k8s-blue" />
+          <h3 className="text-sm font-semibold text-white">Submit Proof</h3>
         </div>
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-gray-400">
+            After fixing all issues in the room, start an attempt to get a unique nonce for proof generation.
+          </p>
 
-        {/* Show API error if any */}
-        {progressError && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <p className="text-xs text-red-400">{progressError}</p>
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={handleStartAttempt}
+            disabled={flowState.step === 'starting'}
+            className={`
+              w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all
+              ${flowState.step === 'starting'
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-k8s-blue hover:bg-k8s-blue/80 text-white'
+              }
+            `}
+          >
+            {flowState.step === 'starting' ? (
+              <span className="flex items-center justify-center gap-2">
+                <LoadingSpinner />
+                Starting...
+              </span>
+            ) : (
+              'Start Attempt'
+            )}
+          </button>
 
-        {/* Error from marking complete */}
-        {status === 'error' && errorMessage && (
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <p className="text-xs text-red-400">{errorMessage}</p>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleMarkComplete}
-          disabled={status === 'loading'}
-          className={`
-            w-full py-2.5 px-4 rounded-lg font-medium text-sm transition-all
-            ${status === 'loading'
-              ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-              : 'bg-k8s-blue hover:bg-k8s-blue/80 text-white'
-            }
-          `}
-        >
-          {status === 'loading' ? (
-            <span className="flex items-center justify-center gap-2">
-              <LoadingSpinner />
-              Saving...
-            </span>
-          ) : (
-            'Mark as Complete'
+          {/* Dev-only direct complete */}
+          {DEV_COMPLETE_ENABLED && (
+            <div className="pt-2 border-t border-gray-800">
+              <p className="text-xs text-gray-600 mb-2 text-center">Development mode</p>
+              <button
+                type="button"
+                onClick={handleDevComplete}
+                className="w-full py-2 px-4 rounded-lg text-sm font-medium bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-500/30 transition-colors"
+              >
+                Mark Complete (Dev)
+              </button>
+            </div>
           )}
-        </button>
-
-        <p className="text-xs text-gray-600 text-center">
-          Cryptographic proof verification coming in a future update.
-        </p>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  // Attempt state: show nonce and token input
+  if (flowState.step === 'attempt' || flowState.step === 'submitting' || (flowState.step === 'error' && currentAttempt)) {
+    const nonce = currentAttempt?.nonce ?? ''
+    const expiresAt = currentAttempt?.expiresAt
+
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+          <KeyIcon className="h-4 w-4 text-k8s-blue" />
+          <h3 className="text-sm font-semibold text-white">Submit Proof Token</h3>
+        </div>
+        <div className="p-4 space-y-4">
+          {/* Nonce display */}
+          {nonce && (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-400">
+                Run this command after fixing the room:
+              </p>
+              <div className="bg-gray-800 rounded-lg p-3 font-mono text-sm">
+                <code className="text-terminal-green break-all">
+                  escape room proof {roomId} --nonce {nonce}
+                </code>
+              </div>
+              {expiresAt && (
+                <p className="text-xs text-gray-500">
+                  Expires: {expiresAt.toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Error display */}
+          {flowState.step === 'error' && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p className="text-xs text-red-400">{flowState.message}</p>
+            </div>
+          )}
+
+          {/* Token input form */}
+          <form onSubmit={handleSubmitProof} className="space-y-3">
+            <div>
+              <label htmlFor="proof-token" className="block text-xs text-gray-500 mb-2">
+                Paste your proof token
+              </label>
+              <textarea
+                id="proof-token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="K8SER|room-...|..."
+                className="w-full h-20 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm font-mono placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-k8s-blue/30 text-white resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setFlowState({ step: 'idle' })
+                  setCurrentAttempt(null)
+                  setToken('')
+                }}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={flowState.step === 'submitting'}
+                className={`
+                  flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all
+                  ${flowState.step === 'submitting'
+                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    : 'bg-terminal-green hover:bg-terminal-green/80 text-black'
+                  }
+                `}
+              >
+                {flowState.step === 'submitting' ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <LoadingSpinner />
+                    Verifying...
+                  </span>
+                ) : (
+                  'Submit Proof'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 function KeyIcon({ className }: { className?: string }) {

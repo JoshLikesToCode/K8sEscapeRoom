@@ -91,3 +91,32 @@ export async function apiPost<T>(
 export async function apiGet<T>(path: string): Promise<T> {
   return apiFetchJson<T>(path, { method: 'GET' })
 }
+
+// ============================================================================
+// Room API Types and Functions
+// ============================================================================
+
+export interface AttemptResponse {
+  roomId: string
+  nonce: string
+  expiresAtUtc: string
+}
+
+export interface SubmitResponse {
+  ok: boolean
+}
+
+/**
+ * Start a new completion attempt for a room.
+ * Returns a nonce that must be used with the CLI proof command.
+ */
+export async function startAttempt(roomId: string): Promise<AttemptResponse> {
+  return apiPost<AttemptResponse>(`/api/rooms/${roomId}/attempt`)
+}
+
+/**
+ * Submit a proof token to complete a room.
+ */
+export async function submitProof(roomId: string, token: string): Promise<SubmitResponse> {
+  return apiPost<SubmitResponse>(`/api/rooms/${roomId}/submit`, { token })
+}

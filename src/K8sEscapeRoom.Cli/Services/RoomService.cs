@@ -177,4 +177,15 @@ public class RoomService
         return _processRunner.RunMakeAsync("room-verify", _projectRoot,
             new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
     }
+
+    /// <summary>
+    /// Runs escape tests for a room (validates fix is complete).
+    /// Maps to: make room-escape-test ROOM=...
+    /// </summary>
+    public Task<ProcessRunner.ProcessResult> EscapeTestRoomAsync(
+        string roomName, CancellationToken ct = default)
+    {
+        return _processRunner.RunMakeAsync("room-escape-test", _projectRoot,
+            new Dictionary<string, string> { ["ROOM"] = roomName }, ct);
+    }
 }

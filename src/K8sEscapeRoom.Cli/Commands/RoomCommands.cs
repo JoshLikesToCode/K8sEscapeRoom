@@ -18,6 +18,7 @@ public static class RoomCommands
             CreateResetCommand(roomService),
             CreateTestCommand(roomService),
             CreateVerifyCommand(roomService),
+            CreateProofCommand(roomService),
             CreateObjectiveCommand(roomService),
             CreateHintCommand(roomService),
             CreateSolutionCommand(roomService)
@@ -144,6 +145,70 @@ public static class RoomCommands
             var result = await roomService.VerifyRoomAsync(roomName);
             Environment.ExitCode = result.ExitCode;
         }, roomArg);
+
+        return command;
+    }
+
+    /// <summary>
+    /// escape room proof <name> --nonce <nonce>
+    /// Runs escape-tests and generates a proof token if successful.
+    /// </summary>
+    private static Command CreateProofCommand(RoomService roomService)
+    {
+        var command = new Command("proof", "Generate a proof token after escaping a room");
+        var roomArg = new Argument<string>("name", "The room name");
+        var nonceOption = new Option<string>(
+            aliases: ["--nonce", "-n"],
+            description: "The nonce from your attempt (from the website)")
+        {
+            IsRequired = true
+        };
+
+        command.AddArgument(roomArg);
+        command.AddOption(nonceOption);
+
+        command.SetHandler(async (string roomName, string nonce) =>
+        {
+            if (!ValidateRoom(roomService, roomName))
+                return;
+
+            if (string.IsNullOrWhiteSpace(nonce))
+            {
+                WriteError("Nonce is required. Get one by starting an attempt on the website.");
+                Environment.ExitCode = 1;
+                return;
+            }
+
+            // Hint to stderr so stdout stays clean for token
+            Console.Error.WriteLine($"\u001b[36mRunning escape tests for {roomName}...\u001b[0m");
+            Console.Error.WriteLine();
+
+            var result = await roomService.EscapeTestRoomAsync(roomName);
+
+            if (result.ExitCode != 0)
+            {
+                Console.Error.WriteLine();
+                WriteError("Escape tests failed. Fix all issues and try again.");
+                Environment.ExitCode = result.ExitCode;
+                return;
+            }
+
+            // Generate proof token
+            var token = ProofTokenGenerator.Generate(roomName, nonce);
+
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("\u001b[32m✓ Escape tests passed!\u001b[0m");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Copy this proof token and paste it on the website:");
+            Console.Error.WriteLine();
+
+            // Output token to stdout (clean, can be piped)
+            Console.WriteLine(token);
+
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("\u001b[90m(Token expires based on your attempt TTL)\u001b[0m");
+
+        }, roomArg, nonceOption);
 
         return command;
     }

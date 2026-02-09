@@ -2,6 +2,14 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+    "TABLES_CONNECTION_STRING": "UseDevelopmentStorage=true",
+    "TABLES_TABLE_NAME": "K8sEscapeRoomProgress",
+    "ATTEMPTS_TABLE_NAME": "K8sEscapeRoomAttempts"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
   }
 }

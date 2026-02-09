@@ -6,7 +6,7 @@ Next.js web application for the K8s Escape Room game-like experience.
 
 This is the hosted frontend for K8s Escape Room. It provides:
 - Room browser and progress tracking
-- Proof token verification (coming soon)
+- Nonce-based proof verification
 - Leaderboards and achievements (coming soon)
 
 **Important:** This site never touches your kubeconfig or cluster.
@@ -45,6 +45,13 @@ By default, the app requires Azure Static Web Apps authentication. In local deve
    ```
    This proxies through SWA CLI which provides real auth endpoints.
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `NEXT_PUBLIC_DEV_AUTH` | `0` | Set to `1` to enable mock authentication in development |
+| `NEXT_PUBLIC_DEV_COMPLETE` | `0` | Set to `1` to show "Mark Complete (Dev)" button (bypasses proof verification) |
+
 ### API Configuration
 
 The web app expects the API to be available at `/api/*`. In production, Azure Static Web Apps routes this automatically. In development:
@@ -59,4 +66,17 @@ See [docs/Hosting.md](../docs/Hosting.md) for the full hosting architecture.
 The web app communicates with the `/api` Azure Functions backend for:
 - User authentication (via Azure Static Web Apps EasyAuth)
 - Progress tracking (Azure Table Storage)
-- Proof token validation (coming soon)
+- Nonce-based proof token verification
+
+## Proof Flow
+
+1. User clicks "Start Attempt" on the room page
+2. API generates a unique nonce (valid for 30 minutes)
+3. User runs the CLI command with the nonce after fixing the room:
+   ```bash
+   escape room proof <roomId> --nonce <nonce>
+   ```
+4. CLI runs escape-tests and generates a proof token if successful
+5. User pastes the token on the website
+6. API validates nonce, TTL, single-use, and hash
+7. Room is marked complete on success

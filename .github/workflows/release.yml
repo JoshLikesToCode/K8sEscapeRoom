@@ -1,0 +1,210 @@
+# K8sEscapeRoom Release Pipeline
+# Builds CLI binaries for multiple platforms and publishes to GitHub Releases
+#
+# Triggered by pushing a version tag (e.g., v1.0.0)
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  CLI_PROJECT: src/K8sEscapeRoom.Cli/K8sEscapeRoom.Cli.csproj
+
+jobs:
+  # ===========================================================================
+  # Build CLI for all platforms
+  # ===========================================================================
+  build:
+    name: Build CLI (${{ matrix.os }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+            rid: linux-x64
+          - os: macos
+            arch: x64
+            runner: macos-latest
+            rid: osx-x64
+          - os: macos
+            arch: arm64
+            runner: macos-latest
+            rid: osx-arm64
+          - os: windows
+            arch: x64
+            runner: windows-latest
+            rid: win-x64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Get version from tag
+        id: version
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build self-contained binary
+        run: |
+          dotnet publish ${{ env.CLI_PROJECT }} \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:Version=${{ steps.version.outputs.version }} \
+            --output ./publish/${{ matrix.rid }}
+
+      - name: Create archive (Unix)
+        if: matrix.os != 'windows'
+        run: |
+          cd ./publish/${{ matrix.rid }}
+          chmod +x escape
+          tar -czvf ../../escape-${{ matrix.rid }}.tar.gz escape
+          cd ../..
+          sha256sum escape-${{ matrix.rid }}.tar.gz > escape-${{ matrix.rid }}.tar.gz.sha256
+
+      - name: Create archive (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          cd ./publish/${{ matrix.rid }}
+          Compress-Archive -Path escape.exe -DestinationPath ../../escape-${{ matrix.rid }}.zip
+          cd ../..
+          (Get-FileHash escape-${{ matrix.rid }}.zip -Algorithm SHA256).Hash.ToLower() + "  escape-${{ matrix.rid }}.zip" | Out-File -Encoding ASCII escape-${{ matrix.rid }}.zip.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: escape-${{ matrix.rid }}
+          path: |
+            escape-${{ matrix.rid }}.*
+
+  # ===========================================================================
+  # Create GitHub Release
+  # ===========================================================================
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: List artifacts
+        run: find ./artifacts -type f | head -50
+
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat << 'EOF' > release-notes.md
+          ## K8sEscapeRoom CLI v${{ steps.version.outputs.version }}
+
+          Debug Kubernetes failures. Escape each room.
+
+          ### Installation
+
+          #### macOS (Apple Silicon)
+          ```bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/escape-osx-arm64.tar.gz | tar -xz
+          sudo mv escape /usr/local/bin/
+          ```
+
+          #### macOS (Intel)
+          ```bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/escape-osx-x64.tar.gz | tar -xz
+          sudo mv escape /usr/local/bin/
+          ```
+
+          #### Linux (x64)
+          ```bash
+          curl -fsSL https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/escape-linux-x64.tar.gz | tar -xz
+          sudo mv escape /usr/local/bin/
+          ```
+
+          #### Windows (x64)
+          Download `escape-win-x64.zip`, extract, and add to your PATH.
+
+          ### Quick Start
+          ```bash
+          # Check your setup
+          escape doctor
+
+          # Start the tutorial
+          escape quickstart
+          ```
+
+          ### What's New
+          See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: K8sEscapeRoom CLI v${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}
+          files: |
+            ./artifacts/**/*
+
+  # ===========================================================================
+  # Update install script (optional)
+  # ===========================================================================
+  update-install-script:
+    name: Update Install Script
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update version in install script
+        run: |
+          if [ -f scripts/install.sh ]; then
+            sed -i "s/^VERSION=.*/VERSION=\"${{ steps.version.outputs.version }}\"/" scripts/install.sh
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add scripts/install.sh
+            git diff --staged --quiet || git commit -m "chore: update install script to v${{ steps.version.outputs.version }}"
+            git push
+          fi
