@@ -50,19 +50,17 @@ export default function Home() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
             <Link
-              href="/play"
+              href="/getting-started"
               className="px-8 py-3 bg-k8s-blue text-white font-semibold rounded-lg hover:bg-k8s-blue/80 transition-colors shadow-lg shadow-k8s-blue/25"
+            >
+              Get Started
+            </Link>
+            <Link
+              href="/play"
+              className="px-8 py-3 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
             >
               Play Now
             </Link>
-            <a
-              href="https://github.com/JoshLikesToCode/K8sEscapeRoom"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition-colors border border-gray-700"
-            >
-              View on GitHub
-            </a>
           </div>
 
           {/* Features */}
@@ -95,12 +93,14 @@ export default function Home() {
               Start Playing
             </Link>
             {' · '}
-            <a href="#" className="text-gray-400 hover:text-white">
-              Documentation
-            </a>
+            <Link href="/getting-started" className="text-gray-400 hover:text-white">
+              Getting Started
+            </Link>
             {' · '}
             <a
               href="https://github.com/JoshLikesToCode/K8sEscapeRoom"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-gray-400 hover:text-white"
             >
               GitHub

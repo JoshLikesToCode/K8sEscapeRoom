@@ -48,6 +48,59 @@ jobs:
           echo "All scripts passed linting!"
 
   # ===========================================================================
+  # Build: Web frontend
+  # ===========================================================================
+  build-web:
+    name: Build Web Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  # ===========================================================================
+  # Build: Ensure API compiles
+  # ===========================================================================
+  build-api:
+    name: Build Azure Functions API
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+  # ===========================================================================
   # Build: Ensure CLI compiles
   # ===========================================================================
   build-cli:
@@ -317,17 +370,29 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [lint-scripts, build-cli, test-rooms]
+    needs: [lint-scripts, build-web, build-api, build-cli, test-rooms]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
           echo "Lint Scripts: ${{ needs.lint-scripts.result }}"
+          echo "Build Web: ${{ needs.build-web.result }}"
+          echo "Build API: ${{ needs.build-api.result }}"
           echo "Build CLI: ${{ needs.build-cli.result }}"
           echo "Test Rooms: ${{ needs.test-rooms.result }}"
 
           if [[ "${{ needs.lint-scripts.result }}" != "success" ]]; then
             echo "::error::Lint Scripts failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.build-web.result }}" != "success" ]]; then
+            echo "::error::Build Web failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.build-api.result }}" != "success" ]]; then
+            echo "::error::Build API failed"
             exit 1
           fi
 

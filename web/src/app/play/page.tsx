@@ -1,17 +1,17 @@
-import { LevelCard, Level } from '@/components'
 import { getAllRooms } from '@/lib/rooms'
+import { LevelCardWithProgress } from '@/components/LevelCardWithProgress'
+import { StatsBar } from '@/components/StatsBar'
 
 export default async function PlayPage() {
   const rooms = await getAllRooms()
 
-  // Convert rooms to Level format for LevelCard
-  const levels: Level[] = rooms.map((room) => ({
+  // Convert rooms to level format (without completed status - that's handled client-side)
+  const levels = rooms.map((room) => ({
     id: room.id,
     name: room.title,
     description: room.description,
     difficulty: room.difficulty,
     failureMode: room.failureMode,
-    completed: false, // TODO: Track completion in future milestone
     locked: false,
     isBoss: room.isBoss,
   }))
@@ -19,9 +19,6 @@ export default async function PlayPage() {
   // Separate regular rooms and boss rooms for display
   const regularRooms = levels.filter((l) => !l.isBoss)
   const bossRooms = levels.filter((l) => l.isBoss)
-
-  const completedCount = levels.filter((l) => l.completed).length
-  const totalCount = levels.length
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -33,14 +30,8 @@ export default async function PlayPage() {
         </p>
       </div>
 
-      {/* Stats Bar */}
-      <div className="flex items-center gap-6 mb-8 p-4 bg-gray-900 rounded-xl border border-gray-800">
-        <Stat label="Completed" value={completedCount} total={totalCount} color="green" />
-        <div className="h-8 w-px bg-gray-800" />
-        <Stat label="Available" value={totalCount} color="blue" />
-        <div className="h-8 w-px bg-gray-800" />
-        <Stat label="Boss Rooms" value={bossRooms.length} color="purple" />
-      </div>
+      {/* Stats Bar - client component for live progress */}
+      <StatsBar totalRooms={levels.length} bossRoomCount={bossRooms.length} />
 
       {/* Regular Rooms */}
       {regularRooms.length > 0 && (
@@ -48,7 +39,7 @@ export default async function PlayPage() {
           <h2 className="text-xl font-semibold text-white mb-4">Escape Rooms</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {regularRooms.map((level) => (
-              <LevelCard key={level.id} level={level} />
+              <LevelCardWithProgress key={level.id} level={level} />
             ))}
           </div>
         </>
@@ -68,7 +59,7 @@ export default async function PlayPage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {bossRooms.map((level) => (
-              <LevelCard key={level.id} level={level} />
+              <LevelCardWithProgress key={level.id} level={level} />
             ))}
           </div>
         </>
@@ -82,40 +73,6 @@ export default async function PlayPage() {
           </p>
         </div>
       )}
-    </div>
-  )
-}
-
-function Stat({
-  label,
-  value,
-  total,
-  suffix,
-  color,
-}: {
-  label: string
-  value: number
-  total?: number
-  suffix?: string
-  color: 'green' | 'blue' | 'amber' | 'purple'
-}) {
-  const colors = {
-    green: 'text-terminal-green',
-    blue: 'text-k8s-blue',
-    amber: 'text-terminal-amber',
-    purple: 'text-purple-400',
-  }
-
-  return (
-    <div className="flex items-center gap-3">
-      <div>
-        <p className={`text-2xl font-bold ${colors[color]}`}>
-          {value}
-          {total !== undefined && <span className="text-gray-500 text-sm">/{total}</span>}
-          {suffix && <span className="text-sm ml-1">{suffix}</span>}
-        </p>
-        <p className="text-xs text-gray-500">{label}</p>
-      </div>
     </div>
   )
 }

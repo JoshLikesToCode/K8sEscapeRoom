@@ -1,5 +1,6 @@
 export { Header } from './Header'
 export { Sidebar } from './Sidebar'
+export { Providers } from './Providers'
 export { LevelCard } from './LevelCard'
 export type { Level } from './LevelCard'
 export { CommandPanel, SingleCommand } from './CommandPanel'
