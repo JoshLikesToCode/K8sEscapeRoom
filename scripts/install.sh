@@ -13,7 +13,6 @@ set -e
 VERSION="latest"
 REPO="JoshLikesToCode/K8sEscapeRoom"
 INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="escape"
 
 # Colors
 RED='\033[0;31m'
@@ -97,7 +96,8 @@ main() {
     echo -e "${NC}"
 
     # Detect platform
-    local platform=$(detect_platform)
+    local platform
+    platform=$(detect_platform)
     echo -e "Detected platform: ${GREEN}${platform}${NC}"
 
     # Get version
@@ -119,8 +119,9 @@ main() {
     echo -e "Download URL: ${CYAN}${url}${NC}"
 
     # Create temp directory
-    local tmp_dir=$(mktemp -d)
-    trap "rm -rf $tmp_dir" EXIT
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' EXIT
 
     # Download
     echo -n "Downloading... "
