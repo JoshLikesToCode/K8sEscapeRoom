@@ -2,16 +2,16 @@
 # K8sEscapeRoom CLI Installer
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/jsburckhardt/K8sEscapeRoom/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/JoshLikesToCode/K8sEscapeRoom/main/scripts/install.sh | bash
 #
 # Or with a specific version:
-#   curl -fsSL https://raw.githubusercontent.com/jsburckhardt/K8sEscapeRoom/main/scripts/install.sh | bash -s -- --version 1.0.0
+#   curl -fsSL https://raw.githubusercontent.com/JoshLikesToCode/K8sEscapeRoom/main/scripts/install.sh | bash -s -- --version 1.0.0
 
 set -e
 
 # Configuration
 VERSION="latest"
-REPO="jsburckhardt/K8sEscapeRoom"
+REPO="JoshLikesToCode/K8sEscapeRoom"
 INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="escape"
 

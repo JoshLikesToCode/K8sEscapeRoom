@@ -20,6 +20,11 @@ public class AttemptEntity : ITableEntity
     public string RowKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// Original room ID before normalization (for API responses)
+    /// </summary>
+    public string? OriginalRoomId { get; set; }
+
+    /// <summary>
     /// Random nonce for this attempt
     /// </summary>
     public string Nonce { get; set; } = string.Empty;
@@ -53,22 +58,11 @@ public class AttemptEntity : ITableEntity
     public string UserId => PartitionKey;
 
     /// <summary>
-    /// Convenience property for RoomId
+    /// Convenience property for RoomId (returns original if available)
     /// </summary>
-    public string RoomId => RowKey;
+    public string RoomId => OriginalRoomId ?? RowKey;
 
     public AttemptEntity() { }
-
-    public AttemptEntity(string userId, string roomId, string nonce, TimeSpan ttl)
-    {
-        PartitionKey = userId;
-        RowKey = roomId;
-        Nonce = nonce;
-        IssuedAtUtc = DateTimeOffset.UtcNow;
-        ExpiresAtUtc = IssuedAtUtc.Add(ttl);
-        IsUsed = false;
-        UsedAtUtc = null;
-    }
 
     /// <summary>
     /// Check if this attempt is expired

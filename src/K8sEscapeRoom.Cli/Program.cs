@@ -88,7 +88,7 @@ public static class Program
             Console.Error.WriteLine();
             Console.Error.WriteLine("To use this command, either:");
             Console.Error.WriteLine("  1. Run from within the K8sEscapeRoom project directory");
-            Console.Error.WriteLine("  2. Clone the repo: git clone https://github.com/jsburckhardt/K8sEscapeRoom.git");
+            Console.Error.WriteLine("  2. Clone the repo: git clone https://github.com/JoshLikesToCode/K8sEscapeRoom.git");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Run \u001b[36mescape doctor\u001b[0m to check your setup.");
             Environment.ExitCode = 1;

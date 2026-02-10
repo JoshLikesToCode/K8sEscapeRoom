@@ -355,7 +355,7 @@ function InstallationSteps({ config }: { config: StepConfig }) {
               Download the latest release and extract to a folder in your PATH:
             </p>
             <a
-              href="https://github.com/jsburckhardt/K8sEscapeRoom/releases/latest"
+              href="https://github.com/JoshLikesToCode/K8sEscapeRoom/releases/latest"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-k8s-blue text-white rounded-lg hover:bg-k8s-blue/80 transition-colors"
@@ -367,12 +367,12 @@ function InstallationSteps({ config }: { config: StepConfig }) {
           <div className="space-y-3">
             <p className="text-gray-400 text-sm">Quick install:</p>
             <CodeBlock>
-              {`curl -fsSL https://raw.githubusercontent.com/jsburckhardt/K8sEscapeRoom/main/scripts/install.sh | bash`}
+              {`curl -fsSL https://raw.githubusercontent.com/JoshLikesToCode/K8sEscapeRoom/main/scripts/install.sh | bash`}
             </CodeBlock>
             <p className="text-gray-500 text-xs">
               Or download manually from{' '}
               <a
-                href="https://github.com/jsburckhardt/K8sEscapeRoom/releases/latest"
+                href="https://github.com/JoshLikesToCode/K8sEscapeRoom/releases/latest"
                 className="text-k8s-blue hover:underline"
               >
                 GitHub Releases
@@ -388,7 +388,7 @@ function InstallationSteps({ config }: { config: StepConfig }) {
           <span className="text-terminal-green">3.</span> Clone the Repository
         </h3>
         <CodeBlock>
-          git clone https://github.com/jsburckhardt/K8sEscapeRoom.git{'\n'}
+          git clone https://github.com/JoshLikesToCode/K8sEscapeRoom.git{'\n'}
           cd K8sEscapeRoom
         </CodeBlock>
       </div>

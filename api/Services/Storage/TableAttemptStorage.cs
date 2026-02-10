@@ -7,6 +7,7 @@ namespace K8sEscapeRoom.Api.Services.Storage;
 /// <summary>
 /// Azure Table Storage implementation for attempt storage.
 /// Uses PartitionKey = UserId, RowKey = RoomId (last attempt per user+room).
+/// All keys are normalized consistently using TableKeyNormalizer.
 /// </summary>
 public class TableAttemptStorage : IAttemptStorage
 {
@@ -22,12 +23,20 @@ public class TableAttemptStorage : IAttemptStorage
 
     public async Task<AttemptEntity> CreateAttemptAsync(string userId, string roomId, string nonce, TimeSpan ttl)
     {
-        var attempt = new AttemptEntity(
-            EscapeTableKey(userId),
-            EscapeTableKey(roomId),
-            nonce,
-            ttl
-        );
+        var normalizedUserId = TableKeyNormalizer.NormalizeUserId(userId);
+        var normalizedRoomId = TableKeyNormalizer.NormalizeRoomId(roomId);
+
+        var attempt = new AttemptEntity
+        {
+            PartitionKey = normalizedUserId,
+            RowKey = normalizedRoomId,
+            OriginalRoomId = roomId, // Preserve original for API responses
+            Nonce = nonce,
+            IssuedAtUtc = DateTimeOffset.UtcNow,
+            ExpiresAtUtc = DateTimeOffset.UtcNow.Add(ttl),
+            IsUsed = false,
+            UsedAtUtc = null
+        };
 
         // Upsert: replace any existing attempt for this user+room
         await _tableClient.UpsertEntityAsync(attempt, TableUpdateMode.Replace);
@@ -36,11 +45,14 @@ public class TableAttemptStorage : IAttemptStorage
 
     public async Task<AttemptEntity?> GetAttemptAsync(string userId, string roomId)
     {
+        var normalizedUserId = TableKeyNormalizer.NormalizeUserId(userId);
+        var normalizedRoomId = TableKeyNormalizer.NormalizeRoomId(roomId);
+
         try
         {
             var response = await _tableClient.GetEntityAsync<AttemptEntity>(
-                EscapeTableKey(userId),
-                EscapeTableKey(roomId)
+                normalizedUserId,
+                normalizedRoomId
             );
             return response.Value;
         }
@@ -59,18 +71,5 @@ public class TableAttemptStorage : IAttemptStorage
             attempt.UsedAtUtc = DateTimeOffset.UtcNow;
             await _tableClient.UpsertEntityAsync(attempt, TableUpdateMode.Replace);
         }
-    }
-
-    /// <summary>
-    /// Escape special characters in table keys
-    /// </summary>
-    private static string EscapeTableKey(string key)
-    {
-        // Table Storage disallows: / \ # ?
-        return key
-            .Replace("/", "_")
-            .Replace("\\", "_")
-            .Replace("#", "_")
-            .Replace("?", "_");
     }
 }

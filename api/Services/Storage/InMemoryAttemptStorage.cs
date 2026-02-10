@@ -15,7 +15,17 @@ public class InMemoryAttemptStorage : IAttemptStorage
 
     public Task<AttemptEntity> CreateAttemptAsync(string userId, string roomId, string nonce, TimeSpan ttl)
     {
-        var attempt = new AttemptEntity(userId, roomId, nonce, ttl);
+        var attempt = new AttemptEntity
+        {
+            PartitionKey = userId,
+            RowKey = roomId,
+            OriginalRoomId = roomId,
+            Nonce = nonce,
+            IssuedAtUtc = DateTimeOffset.UtcNow,
+            ExpiresAtUtc = DateTimeOffset.UtcNow.Add(ttl),
+            IsUsed = false,
+            UsedAtUtc = null
+        };
         _attempts[GetKey(userId, roomId)] = attempt;
         return Task.FromResult(attempt);
     }

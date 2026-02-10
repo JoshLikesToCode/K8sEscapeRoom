@@ -25,6 +25,11 @@ public class RoomProgressEntity : ITableEntity
     public DateTimeOffset CompletedAt { get; set; }
 
     /// <summary>
+    /// Original room ID before normalization (for display purposes)
+    /// </summary>
+    public string? OriginalRoomId { get; set; }
+
+    /// <summary>
     /// Optional: Version of the room when completed (for future-proofing)
     /// </summary>
     public string? CompletedByVersion { get; set; }
@@ -38,9 +43,9 @@ public class RoomProgressEntity : ITableEntity
     public string UserId => PartitionKey;
 
     /// <summary>
-    /// Convenience property for RoomId
+    /// Convenience property for RoomId (returns original if available)
     /// </summary>
-    public string RoomId => RowKey;
+    public string RoomId => OriginalRoomId ?? RowKey;
 
     public RoomProgressEntity() { }
 

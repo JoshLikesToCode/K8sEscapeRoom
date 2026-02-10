@@ -193,7 +193,7 @@ public class DoctorService
         }
 
         return new CheckResult("Project", false, null, "K8sEscapeRoom project not found",
-            "Clone the repo: git clone https://github.com/jsburckhardt/K8sEscapeRoom.git");
+            "Clone the repo: git clone https://github.com/JoshLikesToCode/K8sEscapeRoom.git");
     }
 
     private static async Task<(int ExitCode, string Output)> RunCommandAsync(string command, string arguments)

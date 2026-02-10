@@ -19,7 +19,7 @@ export default function GettingStartedPage() {
               Play
             </a>
             <a
-              href="https://github.com/jsburckhardt/K8sEscapeRoom"
+              href="https://github.com/JoshLikesToCode/K8sEscapeRoom"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors text-sm"
@@ -58,7 +58,7 @@ export default function GettingStartedPage() {
               <h3 className="text-white font-semibold mb-2">Report Issues</h3>
               <p className="text-gray-500 text-sm">
                 <a
-                  href="https://github.com/jsburckhardt/K8sEscapeRoom/issues"
+                  href="https://github.com/JoshLikesToCode/K8sEscapeRoom/issues"
                   className="text-k8s-blue hover:underline"
                 >
                   Open an issue on GitHub
