@@ -44,11 +44,13 @@ kubectl get pod escape-app -n escape-room-imagepullbackoff -o jsonpath='{.spec.c
 # Delete the broken pod
 kubectl delete pod escape-app -n escape-room-imagepullbackoff
 
-# Create a new pod with the correct image
+# Create a new pod with the correct image (using a specific version)
 kubectl run escape-app -n escape-room-imagepullbackoff \
-  --image=nginx:latest \
+  --image=nginx:1.25-alpine \
   --port=80
 ```
+
+> **Note:** We use `nginx:1.25-alpine` (a specific version) rather than `nginx:latest`. While `latest` works for this exercise, using specific versions is a best practice for production (see Lessons Learned).
 
 ### Option 2: Apply Corrected YAML
 
@@ -69,7 +71,7 @@ metadata:
 spec:
   containers:
     - name: app
-      image: nginx:latest
+      image: nginx:1.25-alpine
       ports:
         - containerPort: 80
       resources:

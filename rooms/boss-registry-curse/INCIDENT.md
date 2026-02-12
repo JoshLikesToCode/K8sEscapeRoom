@@ -46,10 +46,10 @@ kubectl get pod escape-app -n escape-boss-registry-curse -o jsonpath='{.spec.ima
 
 ## Success Criteria
 
-- The ServiceAccount correctly references the existing secret
-- The pod either:
-  - Pulls successfully (if using a real registry), OR
-  - Is reconfigured to use a working image
+- The ServiceAccount correctly references the existing secret (`registry-credentials`)
+- The pod is running with a working image
+
+**Note:** The private registry `private-registry.internal.example.com` is intentionally unreachable in this exercise. Once you fix the ServiceAccount configuration, you'll also need to change the pod's image to something publicly available (like `nginx:1.25-alpine`) to fully escape this room.
 
 ## Namespace
 
