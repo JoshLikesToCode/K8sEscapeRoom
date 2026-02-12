@@ -2,6 +2,20 @@
 
 The application has been deployed with an Ingress for external access, but users report they can't reach the app. The pod and service seem to be working fine internally.
 
+## Prerequisites
+
+This room requires an **Ingress controller** to be installed in your cluster. If you're using kind, you can install nginx-ingress:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+```
+
+If you don't have an ingress controller, you can still solve this room by fixing the Ingress configuration - the escape tests will verify the config even without testing actual connectivity.
+
 ## Your Mission
 
 1. Verify the pod and service are working internally

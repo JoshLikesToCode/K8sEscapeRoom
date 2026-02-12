@@ -54,7 +54,12 @@ kubectl exec escape-app -n escape-room-probe-doom -- curl -s localhost/healthz
 
 ## Hint Level 4: How to Fix
 
-You need to change the probe to hit an endpoint that actually exists. For nginx, the root path `/` works fine.
+You have two valid approaches:
+
+1. **Fix the probe path** - Change it to hit an endpoint that exists (e.g., `/` for nginx)
+2. **Remove the probe** - If the app doesn't have a health endpoint, removing the liveness probe is valid (though not recommended for production)
+
+For this room, either approach will work. Let's focus on fixing the path:
 
 ### Option A: Patch the pod (requires delete/recreate)
 Since you can't change probes on a running pod, you need to:

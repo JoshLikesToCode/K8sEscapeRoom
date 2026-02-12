@@ -58,8 +58,14 @@ kubectl create rolebinding pod-reader-binding \
   -n escape-room-rbac-denied
 ```
 
-After creating these, delete and recreate the pod (or wait for it to restart):
+**Important:** The pod caches its permissions at startup. After creating the RBAC resources, you **must restart the pod** for the changes to take effect:
+
 ```bash
 kubectl delete pod escape-app -n escape-room-rbac-denied
-kubectl apply -f rooms/room-rbac-denied/app.yaml -n escape-room-rbac-denied
+```
+
+The pod will be recreated automatically since it uses `restartPolicy: OnFailure`. If it doesn't restart on its own, recreate it:
+
+```bash
+kubectl apply -f rooms/room-rbac-denied/app.yaml
 ```
