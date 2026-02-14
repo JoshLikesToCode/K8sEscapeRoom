@@ -58,6 +58,7 @@ jobs:
           echo "Building version: $VERSION"
 
       - name: Build self-contained binary
+        shell: bash
         run: |
           dotnet publish ${{ env.CLI_PROJECT }} \
             --configuration Release \
