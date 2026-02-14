@@ -10,7 +10,7 @@
 set -e
 
 # Configuration
-VERSION="latest"
+VERSION="1.0.0"
 REPO="JoshLikesToCode/K8sEscapeRoom"
 INSTALL_DIR="/usr/local/bin"
 
