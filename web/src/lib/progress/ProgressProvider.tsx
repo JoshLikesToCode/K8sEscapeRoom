@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { useAuth } from '../auth/AuthProvider'
-import { apiGet, apiPost, ApiError } from '../api'
+import { apiGet, apiPost, resetRoom, ApiError } from '../api'
 import type { UserProgress } from '../auth/types'
 
 // ============================================================================
@@ -20,6 +20,8 @@ interface ProgressContextValue {
   isRoomCompleted: (roomId: string) => boolean
   /** Mark a room as complete (calls API). Throws on failure. */
   markRoomComplete: (roomId: string) => Promise<void>
+  /** Reset progress for a room (calls API). Throws on failure. */
+  resetRoomProgress: (roomId: string) => Promise<void>
   /** Refresh progress from API */
   refresh: () => Promise<void>
 }
@@ -86,12 +88,27 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
     setCompletedRooms((prev) => new Set([...Array.from(prev), roomId]))
   }, [isAuthenticated])
 
+  const resetRoomProgress = useCallback(async (roomId: string) => {
+    if (!isAuthenticated) {
+      throw new Error('Must be authenticated to reset room progress')
+    }
+
+    await resetRoom(roomId)
+
+    setCompletedRooms((prev) => {
+      const next = new Set(prev)
+      next.delete(roomId)
+      return next
+    })
+  }, [isAuthenticated])
+
   const value: ProgressContextValue = {
     completedRooms,
     isLoading,
     error,
     isRoomCompleted,
     markRoomComplete,
+    resetRoomProgress,
     refresh,
   }
 

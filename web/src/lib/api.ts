@@ -120,3 +120,10 @@ export async function startAttempt(roomId: string): Promise<AttemptResponse> {
 export async function submitProof(roomId: string, token: string): Promise<SubmitResponse> {
   return apiPost<SubmitResponse>(`/api/rooms/${roomId}/submit`, { token })
 }
+
+/**
+ * Reset progress for a room (mark as incomplete).
+ */
+export async function resetRoom(roomId: string): Promise<{ success: boolean }> {
+  return apiPost<{ success: boolean }>(`/api/rooms/${roomId}/reset`)
+}

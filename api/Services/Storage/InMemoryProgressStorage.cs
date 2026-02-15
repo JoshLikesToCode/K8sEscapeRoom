@@ -42,4 +42,13 @@ public class InMemoryProgressStorage : IProgressStorage
         }
         return Task.FromResult(false);
     }
+
+    public Task ResetRoomProgressAsync(string userId, string roomId)
+    {
+        if (_progress.TryGetValue(userId, out var rooms))
+        {
+            rooms.Remove(roomId);
+        }
+        return Task.CompletedTask;
+    }
 }

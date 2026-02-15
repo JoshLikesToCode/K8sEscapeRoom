@@ -29,3 +29,11 @@ kubeconfig
 # Local testing
 fixed-pod.yaml
 test-*.yaml
+
+# Azurite (local Azure Storage emulator)
+__azurite_db_*
+api/__azurite_db_*
+api/AzuriteConfig
+
+# Next.js local API proxy
+web/src/app/api/

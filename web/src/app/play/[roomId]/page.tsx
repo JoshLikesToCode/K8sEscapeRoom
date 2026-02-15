@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getRoomById } from '@/lib/rooms'
 import { parseHintsMarkdown } from '@/lib/rooms/parseHints'
-import { CommandPanel, HintAccordion, ProofSubmit, SingleCommand, MarkdownRenderer } from '@/components'
+import { CommandPanel, HintAccordion, ProofSubmit, SingleCommand, MarkdownRenderer, ResetButton } from '@/components'
 import {
   ArrowLeftIcon,
   TargetIcon,
@@ -88,11 +88,7 @@ export default async function RoomDetailPage({ params }: PageProps) {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm">
-              Reset Room
-            </button>
-          </div>
+          <ResetButton roomId={params.roomId} />
         </div>
       </div>
 
