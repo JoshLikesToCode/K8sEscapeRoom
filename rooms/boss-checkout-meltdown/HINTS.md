@@ -63,19 +63,19 @@ kubectl get events -n escape-boss-checkout-meltdown | grep -i readiness
 The Service selector is `app: checkout` but pods have `app: checkout-api`.
 
 ```bash
-kubectl patch svc checkout-service -n escape-boss-checkout-meltdown \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/selector/app", "value": "checkout-api"}]'
+kubectl edit svc checkout-service -n escape-boss-checkout-meltdown
+# Change: app: checkout
+# To:     app: checkout-api
 ```
 
 **Fix #2 - Readiness Probe Port:**
 The probe checks port 8080 but nginx listens on port 80.
 
-You'll need to patch the deployment or edit it:
 ```bash
 kubectl edit deployment checkout-api -n escape-boss-checkout-meltdown
 # Change readinessProbe port from 8080 to 80
-# Also change path from /health to / (nginx doesn't have /health)
 ```
 
 After both fixes, pods should become Ready and endpoints should appear.
+
+See SOLUTION.md for alternative approaches.

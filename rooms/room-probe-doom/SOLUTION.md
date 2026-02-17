@@ -2,16 +2,16 @@
 
 ## Root Cause
 
-The pod has liveness and readiness probes configured to check `/healthz`:
+The deployment has liveness and readiness probes configured to check port 8080:
 
 ```yaml
 livenessProbe:
   httpGet:
-    path: /healthz   # This endpoint doesn't exist!
-    port: 80
+    path: /
+    port: 8080   # Nothing is listening here!
 ```
 
-The nginx container doesn't have a `/healthz` endpoint, so it returns HTTP 404. Kubernetes interprets any non-2xx response as a probe failure. After the configured `failureThreshold` (2 failures), Kubernetes kills the container.
+The nginx container listens on port 80, not 8080. Since nothing is listening on port 8080, every probe attempt gets "connection refused," which Kubernetes counts as a failure. After the configured `failureThreshold` (2 failures), Kubernetes kills the container.
 
 With `periodSeconds: 3` and `failureThreshold: 2`, the container gets killed every ~6 seconds, causing CrashLoopBackOff.
 
@@ -20,92 +20,86 @@ With `periodSeconds: 3` and `failureThreshold: 2`, the container gets killed eve
 ```bash
 # Step 1: Notice the restart count climbing
 kubectl get pods -n escape-room-probe-doom -w
-# Output: escape-app   0/1   Running   4 (2s ago)   30s
+# Output: escape-app-xxx-xxx   0/1   Running   4 (2s ago)   30s
 
 # Step 2: Check events for the cause
 kubectl get events -n escape-room-probe-doom --sort-by='.lastTimestamp'
 # You'll see:
-# Warning  Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 404
+# Warning  Unhealthy  Liveness probe failed: Get "http://...:8080/":
+#                      dial tcp ...:8080: connect: connection refused
 # Normal   Killing    Container app failed liveness probe, will be restarted
 
-# Step 3: Check the probe configuration
-kubectl get pod escape-app -n escape-room-probe-doom -o jsonpath='{.spec.containers[0].livenessProbe}' | jq
-# Shows the probe hitting /healthz
+# Step 3: Compare probe port vs container port
+kubectl get deployment escape-app -n escape-room-probe-doom \
+  -o jsonpath='{.spec.template.spec.containers[0].ports[0].containerPort}'
+# Output: 80
 
-# Step 4: Verify /healthz doesn't exist (when pod is momentarily up)
-kubectl exec escape-app -n escape-room-probe-doom -- curl -s -o /dev/null -w "%{http_code}" localhost/healthz
-# Returns: 404
+kubectl get deployment escape-app -n escape-room-probe-doom \
+  -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}'
+# Output: 8080  ← MISMATCH!
 ```
 
 ## The Fix
 
-### Option 1: Replace Pod with Fixed Probes
+Edit the deployment to change the probe ports from 8080 to 80:
 
 ```bash
-# Export current pod
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml > pod.yaml
-
-# Edit pod.yaml - change /healthz to / in both probes
-# Or use sed:
-sed -i 's|/healthz|/|g' pod.yaml
-
-# Replace the pod
-kubectl delete pod escape-app -n escape-room-probe-doom
-kubectl apply -f pod.yaml -n escape-room-probe-doom
+kubectl edit deployment escape-app -n escape-room-probe-doom
 ```
 
-### Option 2: One-liner Replace
+Find both probe sections and change the port:
 
-```bash
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml | \
-  sed 's|path: /healthz|path: /|g' | \
-  kubectl replace --force -f -
+```yaml
+# Before (WRONG):
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080    # connection refused - nothing listening
+
+# After (FIXED):
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80      # matches containerPort
 ```
 
-### Option 3: Remove Probes Entirely (Not Recommended for Production)
-
-```bash
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml | \
-  grep -v -A6 "livenessProbe:" | \
-  grep -v -A6 "readinessProbe:" | \
-  kubectl replace --force -f -
-```
+Do the same for the `readinessProbe` section. Save and exit — Kubernetes will automatically roll out a new pod with the corrected probes.
 
 ## Verification
 
 ```bash
-# Watch the pod stabilize
+# Watch the new pod roll out
 kubectl get pods -n escape-room-probe-doom -w
-# Restart count should stop increasing
+# Old pod terminates, new pod starts with 0 restarts
 
 # After ~30 seconds, verify stability
 kubectl get pods -n escape-room-probe-doom
-# Should show: escape-app   1/1   Running   0   30s  (or low stable restart count)
+# Should show: escape-app-xxx-xxx   1/1   Running   0   30s
 
-# Check the probe is now passing
-kubectl describe pod escape-app -n escape-room-probe-doom | grep -A5 "Liveness:"
+# Confirm the probes are passing
+kubectl describe pod -l app=escape-app -n escape-room-probe-doom | grep -A5 "Liveness:"
 ```
 
 ## Lessons Learned
 
-1. **Liveness probe failures cause container restarts** - they're the "kill switch"
-2. **Always verify probe endpoints exist** before configuring probes
-3. **404 is a probe failure** - only 2xx responses count as success
+1. **"Connection refused" means wrong port** - nothing is listening there. This is different from a 404 (wrong path) or timeout (port blocked/slow app).
+2. **Probe port must match the container port** - not the Service port or any other port
+3. **Liveness probe failures cause container restarts** - they're the "kill switch"
 4. **CrashLoopBackOff isn't always an app crash** - it can be probe-induced kills
 5. Check events for "Unhealthy" and "Killing" messages when debugging restarts
 
 ## Real-World Considerations
 
 This commonly happens when:
-- Copying probe configs from one app to another without adjusting paths
-- Application doesn't implement the expected health endpoint
-- Health endpoint exists but on a different port
-- Probe timeouts are too short for slow-starting apps
+- Copying probe configs from one app to another without adjusting ports
+- Confusing Service port (what clients connect to) with container port (what the app listens on)
+- Adding sidecars that remap ports
+- Helm templates using the wrong port variable (`service.port` vs `container.port`)
+- Framework defaults differ from deployment config (e.g., Spring Boot defaults to 8080)
 
 Best practices:
-- Implement a proper `/health` or `/healthz` endpoint in your applications
-- Use appropriate `initialDelaySeconds` for slow-starting apps
-- Set reasonable `timeoutSeconds` for your environment
-- Consider using `tcpSocket` probes if HTTP isn't practical
+- Always verify probe port matches `containerPort` in the pod spec
+- Use named ports for clarity: `port: http` instead of `port: 80`
 - Test probes manually with `kubectl exec ... curl` before deploying
 - Use `startupProbe` for apps with variable startup times
+- Consider `tcpSocket` probes if HTTP isn't practical

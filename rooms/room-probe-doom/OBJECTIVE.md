@@ -10,9 +10,9 @@ The application keeps restarting. It seems to start up fine, but then Kubernetes
 
 ## Success Criteria
 
-- The pod `escape-app` is in `Running` state with `Ready` condition
+- The pod is in `Running` state with `Ready` condition
 - The pod is stable (not restarting)
-- The restart count stops increasing
+- The liveness probe is passing
 
 ## Getting Started
 
@@ -21,8 +21,8 @@ The application keeps restarting. It seems to start up fine, but then Kubernetes
 kubectl get pods -n escape-room-probe-doom
 
 # You might see something like:
-# NAME         READY   STATUS    RESTARTS      AGE
-# escape-app   0/1     Running   3 (5s ago)    30s
+# NAME                          READY   STATUS    RESTARTS      AGE
+# escape-app-xxxxxxxxx-xxxxx   0/1     Running   3 (5s ago)    30s
 ```
 
 ## Namespace

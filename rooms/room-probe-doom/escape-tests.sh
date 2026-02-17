@@ -3,8 +3,8 @@
 #
 # Success criteria:
 # - Pod is Running and Ready
+# - Liveness probe exists and is not targeting port 8080
 # - Restart count is stable (not increasing)
-# - Liveness probe is passing
 
 set -euo pipefail
 
@@ -12,7 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 
 NAMESPACE="escape-room-probe-doom"
-POD_NAME="escape-app"
+DEPLOYMENT_NAME="escape-app"
+POD_LABEL="app=escape-app"
 
 echo "=== Testing room-probe-doom (escaped/fixed state) ==="
 echo ""
@@ -21,6 +22,12 @@ echo ""
 # Test 1: Pod is Running
 # ============================================================================
 test_start "Pod is Running"
+
+POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -z "$POD_NAME" ]; then
+    test_fail "No pod found with label '$POD_LABEL'"
+fi
 
 PHASE=$(get_pod_phase "$POD_NAME" "$NAMESPACE")
 if [ "$PHASE" = "Running" ]; then
@@ -42,7 +49,23 @@ else
 fi
 
 # ============================================================================
-# Test 3: Pod is stable (restarts not increasing)
+# Test 3: Liveness probe exists and has been fixed
+# ============================================================================
+test_start "Liveness probe exists and is not targeting port 8080"
+
+PROBE_PORT=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.port}' 2>/dev/null || echo "")
+
+if [ -z "$PROBE_PORT" ]; then
+    test_fail "Liveness probe was removed - it should be fixed, not removed"
+elif [ "$PROBE_PORT" = "8080" ]; then
+    test_fail "Liveness probe still targets port 8080"
+else
+    test_pass "Liveness probe port: $PROBE_PORT"
+fi
+
+# ============================================================================
+# Test 4: Pod is stable (restarts not increasing)
 # ============================================================================
 test_start "Pod is stable (no new restarts)"
 
@@ -57,27 +80,11 @@ else
     test_fail "Restart count increased from $RESTARTS_BEFORE to $RESTARTS_AFTER"
 fi
 
-# ============================================================================
-# Test 4: Probe configuration has been fixed
-# ============================================================================
-test_start "Liveness probe path is no longer /healthz"
-
-PROBE_PATH=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
-    -o jsonpath='{.spec.containers[0].livenessProbe.httpGet.path}' 2>/dev/null || echo "")
-
-if [ -z "$PROBE_PATH" ]; then
-    test_pass "Liveness probe removed"
-elif [ "$PROBE_PATH" != "/healthz" ]; then
-    test_pass "Liveness probe path changed to '$PROBE_PATH'"
-else
-    test_fail "Liveness probe still targets /healthz"
-fi
-
 echo ""
 echo -e "${GREEN}=========================================="
 echo "  CONGRATULATIONS! You escaped the room!"
 echo "==========================================${NC}"
 echo ""
-echo "You successfully fixed the misconfigured liveness probe"
-echo "that was causing Kubernetes to repeatedly kill your container."
+echo "You successfully fixed the misconfigured liveness probe port"
+echo "so Kubernetes stops killing your healthy container."
 echo ""

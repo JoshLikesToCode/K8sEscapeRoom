@@ -17,7 +17,7 @@ metadata:
     k8sescaperoom.dev/difficulty: advanced
     k8sescaperoom.dev/failure-mode: MultipleFailures
   annotations:
-    k8sescaperoom.dev/description: "Service selector mismatch + readiness probe misconfigured"
+    k8sescaperoom.dev/description: "Service selector mismatch + readiness probe on wrong port"
 spec:
   replicas: 2
   selector:
@@ -45,7 +45,7 @@ spec:
           # nginx listens on 80, but probe checks 8080
           readinessProbe:
             httpGet:
-              path: /health
+              path: /
               port: 8080
             initialDelaySeconds: 2
             periodSeconds: 3

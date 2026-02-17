@@ -23,7 +23,7 @@ Result: Service has 0 endpoints, all traffic returns 503.
 ```yaml
 readinessProbe:
   httpGet:
-    path: /health    # nginx doesn't have this endpoint
+    path: /
     port: 8080       # nginx listens on 80, not 8080
 ```
 
@@ -56,7 +56,7 @@ kubectl get pods -n escape-boss-checkout-meltdown --show-labels
 
 # Step 4: Check probe configuration
 kubectl get deployment checkout-api -n escape-boss-checkout-meltdown -o jsonpath='{.spec.template.spec.containers[0].readinessProbe}'
-# port: 8080, path: /health  ← WRONG!
+# port: 8080  ← WRONG! nginx listens on 80
 
 # Step 5: Check events for probe failures
 kubectl get events -n escape-boss-checkout-meltdown --sort-by='.lastTimestamp' | grep -i readiness
@@ -67,6 +67,14 @@ kubectl get events -n escape-boss-checkout-meltdown --sort-by='.lastTimestamp' |
 
 ### Fix #1: Correct Service Selector
 
+Edit the service to fix the selector:
+```bash
+kubectl edit svc checkout-service -n escape-boss-checkout-meltdown
+# Change: app: checkout
+# To:     app: checkout-api
+```
+
+Alternative — use a JSON patch to make the change non-interactively. This is useful in scripts or CI/CD pipelines where `kubectl edit` isn't practical:
 ```bash
 kubectl patch svc checkout-service -n escape-boss-checkout-meltdown \
   --type='json' \
@@ -75,29 +83,17 @@ kubectl patch svc checkout-service -n escape-boss-checkout-meltdown \
 
 ### Fix #2: Correct Readiness Probe
 
-Option A - Patch the deployment:
+Edit the deployment to fix the probe port:
+```bash
+kubectl edit deployment checkout-api -n escape-boss-checkout-meltdown
+# Change readinessProbe port from 8080 to 80
+```
+
+Alternative — use a JSON patch for non-interactive environments (scripts, CI/CD):
 ```bash
 kubectl patch deployment checkout-api -n escape-boss-checkout-meltdown \
   --type='json' \
-  -p='[
-    {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/port", "value": 80},
-    {"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/path", "value": "/"}
-  ]'
-```
-
-Option B - Edit directly:
-```bash
-kubectl edit deployment checkout-api -n escape-boss-checkout-meltdown
-# Change:
-#   readinessProbe:
-#     httpGet:
-#       path: /health
-#       port: 8080
-# To:
-#   readinessProbe:
-#     httpGet:
-#       path: /
-#       port: 80
+  -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/readinessProbe/httpGet/port", "value": 80}]'
 ```
 
 ## Verification
@@ -128,7 +124,7 @@ kubectl run test --rm -it --image=curlimages/curl --restart=Never \
 2. **Check both labels AND readiness** when debugging service connectivity
 3. **Running ≠ Ready** - a pod can be Running but not receiving traffic
 4. **Always verify endpoints** as part of service debugging
-5. **Read the full probe config** - path AND port must be correct
+5. **Read the full probe config** - the port must match what the container actually listens on
 
 ## Real-World Considerations
 

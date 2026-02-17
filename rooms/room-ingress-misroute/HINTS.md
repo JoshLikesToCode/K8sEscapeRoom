@@ -57,18 +57,12 @@ This is a common typo - service names must match exactly.
 
 Edit the Ingress to use the correct service name:
 
-### Option A: Patch the Ingress
-```bash
-kubectl patch ingress escape-ingress -n escape-room-ingress-misroute \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/rules/0/http/paths/0/backend/service/name", "value": "escape-service"}]'
-```
-
-### Option B: Edit the Ingress directly
 ```bash
 kubectl edit ingress escape-ingress -n escape-room-ingress-misroute
 # Change: name: escape-svc
 # To:     name: escape-service
 ```
 
-After fixing, test by curling through the Ingress or checking the describe output for a valid backend.
+After saving, verify the fix with `kubectl describe ingress escape-ingress -n escape-room-ingress-misroute` — the backend error should be gone.
+
+See SOLUTION.md for alternative approaches.

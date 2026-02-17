@@ -14,11 +14,11 @@ In Kubernetes, ServiceAccounts have no permissions by default. You must explicit
 
 ```bash
 # Step 1: Check pod logs
-kubectl logs escape-app -n escape-room-rbac-denied
+kubectl logs -l app=escape-app -n escape-room-rbac-denied
 # Shows: FAILED: Permission denied!
 
 # Step 2: Identify the ServiceAccount
-kubectl get pod escape-app -n escape-room-rbac-denied -o jsonpath='{.spec.serviceAccountName}'
+kubectl get deployment escape-app -n escape-room-rbac-denied -o jsonpath='{.spec.template.spec.serviceAccountName}'
 # Output: escape-sa
 
 # Step 3: Check current permissions
@@ -34,25 +34,28 @@ kubectl get roles,rolebindings -n escape-room-rbac-denied
 
 ## The Fix
 
-### Option 1: Create Role and RoleBinding Imperatively
+Create a Role that allows reading pods and a RoleBinding that grants it to the ServiceAccount:
 
 ```bash
-# Create a Role that allows reading pods
 kubectl create role pod-reader \
   --verb=get,list,watch \
   --resource=pods \
   -n escape-room-rbac-denied
 
-# Bind the role to the ServiceAccount
 kubectl create rolebinding pod-reader-binding \
   --role=pod-reader \
   --serviceaccount=escape-room-rbac-denied:escape-sa \
   -n escape-room-rbac-denied
 ```
 
-### Option 2: Create Role and RoleBinding Declaratively
+Then delete the pod so the Deployment recreates it with the new permissions:
 
-Create a file `rbac.yaml`:
+```bash
+kubectl delete pod -l app=escape-app -n escape-room-rbac-denied
+```
+
+### Declarative Alternative
+
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -79,21 +82,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-Apply it:
-```bash
-kubectl apply -f rbac.yaml
-```
-
-### After Creating RBAC
-
-The pod needs to be restarted to pick up the new permissions (or wait for it to restart on its own since it exits with failure):
-
-```bash
-kubectl delete pod escape-app -n escape-room-rbac-denied
-# The pod will be recreated if using a Deployment, or reapply:
-kubectl apply -f rooms/room-rbac-denied/app.yaml -n escape-room-rbac-denied
-```
-
 ## Verification
 
 ```bash
@@ -107,7 +95,7 @@ kubectl auth can-i list pods \
 # Output: yes
 
 # Check the pod logs
-kubectl logs escape-app -n escape-room-rbac-denied
+kubectl logs -l app=escape-app -n escape-room-rbac-denied
 # Should show: SUCCESS: Pod listing completed!
 ```
 

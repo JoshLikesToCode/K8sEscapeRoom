@@ -44,18 +44,10 @@ kubectl get configmaps -n escape-room-configmap-missing
 
 ## Hint Level 4: How to Fix
 
-You need to create a ConfigMap named `app-config` with the environment variables the application expects. Look at the pod's command to see what variables it uses:
-- APP_NAME
-- APP_ENV
-- LOG_LEVEL
+You need to create the missing ConfigMap. The pod will automatically retry and start once it exists.
 
-Create a ConfigMap with these keys:
 ```bash
-kubectl create configmap app-config \
-  --from-literal=APP_NAME=escape-app \
-  --from-literal=APP_ENV=production \
-  --from-literal=LOG_LEVEL=info \
-  -n escape-room-configmap-missing
+kubectl create configmap app-config -n escape-room-configmap-missing
 ```
 
-The pod should automatically retry and start once the ConfigMap exists.
+See SOLUTION.md for best practices on populating ConfigMap values.
