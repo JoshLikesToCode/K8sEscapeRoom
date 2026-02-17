@@ -72,4 +72,19 @@ public class TableProgressStorage : IProgressStorage
             return false;
         }
     }
+
+    public async Task ResetRoomProgressAsync(string userId, string roomId)
+    {
+        var normalizedUserId = TableKeyNormalizer.NormalizeUserId(userId);
+        var normalizedRoomId = TableKeyNormalizer.NormalizeRoomId(roomId);
+
+        try
+        {
+            await _tableClient.DeleteEntityAsync(normalizedUserId, normalizedRoomId);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            // Already deleted — idempotent
+        }
+    }
 }

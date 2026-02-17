@@ -12,16 +12,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 
 NAMESPACE="escape-room-pending-resources"
-POD_LABEL="app=escape-app"
+POD_NAME="escape-app"
 
 echo "=== Testing room-pending-resources (escaped/fixed state) ==="
 echo ""
 
-# Get pod name
-POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-
-if [ -z "$POD_NAME" ]; then
-    echo -e "${RED}No pod found with label $POD_LABEL in namespace $NAMESPACE${NC}"
+# Verify pod exists
+if ! kubectl get pod "$POD_NAME" -n "$NAMESPACE" &>/dev/null; then
+    echo -e "${RED}No pod named '$POD_NAME' found in namespace $NAMESPACE${NC}"
     echo "Make sure you've applied the room first: make room-apply ROOM=room-pending-resources"
     exit 1
 fi

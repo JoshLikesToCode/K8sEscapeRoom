@@ -2,6 +2,7 @@
 # escape-tests.sh - Validate that room-crashloop-env has been ESCAPED (fixed)
 #
 # Success criteria:
+# - Deployment exists and is available
 # - Pod is Running and Ready
 # - Pod shows "Application started successfully" in logs
 # - Pod hasn't restarted recently
@@ -13,9 +14,20 @@ source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 
 NAMESPACE="escape-room-crashloop-env"
 POD_LABEL="app=escape-app"
+DEPLOYMENT_NAME="escape-app"
 
 echo "=== Testing room-crashloop-env (escaped/fixed state) ==="
 echo ""
+
+# Check deployment exists and is available
+test_start "Deployment '$DEPLOYMENT_NAME' exists and is available"
+AVAILABLE=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "")
+if [ "$AVAILABLE" = "True" ]; then
+    test_pass
+else
+    test_fail "Deployment '$DEPLOYMENT_NAME' is not available (status: $AVAILABLE)"
+fi
 
 # Get pod name
 POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")

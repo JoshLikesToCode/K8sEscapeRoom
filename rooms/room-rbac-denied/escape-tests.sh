@@ -4,7 +4,7 @@
 # Success criteria:
 # - Role and RoleBinding exist
 # - ServiceAccount can now list pods
-# - Pod logs show success message
+# - Pod is Running and logs show success message
 
 set -euo pipefail
 
@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 
 NAMESPACE="escape-room-rbac-denied"
-POD_NAME="escape-app"
+POD_LABEL="app=escape-app"
 SERVICE_ACCOUNT="escape-sa"
 
 echo "=== Testing room-rbac-denied (escaped/fixed state) ==="
@@ -23,7 +23,6 @@ echo ""
 # ============================================================================
 test_start "A Role granting pod access exists"
 
-# Check for any role that grants pod access
 ROLES=$(kubectl get roles -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
 
 if [ -n "$ROLES" ]; then
@@ -50,7 +49,6 @@ fi
 # ============================================================================
 test_start "ServiceAccount can list pods"
 
-# Use -q flag for exit code based checking (0=allowed, 1=denied)
 if kubectl auth can-i list pods \
     --as="system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT}" \
     -n "$NAMESPACE" -q 2>/dev/null; then
@@ -64,12 +62,17 @@ fi
 # ============================================================================
 test_start "Pod is Running"
 
+POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -z "$POD_NAME" ]; then
+    test_fail "No pod found with label '$POD_LABEL'"
+fi
+
 PHASE=$(get_pod_phase "$POD_NAME" "$NAMESPACE")
 if [ "$PHASE" = "Running" ]; then
     test_pass "$PHASE"
 else
-    # Pod might need to be restarted after RBAC fix
-    test_warn "Pod is in '$PHASE' state - you may need to restart it"
+    test_fail "Pod is in '$PHASE' state - delete the pod so the Deployment recreates it with the new permissions"
 fi
 
 # ============================================================================
@@ -83,9 +86,9 @@ if echo "$LOGS" | grep -q "SUCCESS"; then
     test_pass "Success message found in logs"
 else
     if echo "$LOGS" | grep -qi "forbidden\|FAILED"; then
-        test_fail "Pod still showing permission errors - restart pod after fixing RBAC"
+        test_fail "Pod still showing permission errors - delete the pod so the Deployment recreates it"
     else
-        test_warn "Could not verify success message - check logs manually"
+        test_fail "Could not verify success message in logs"
     fi
 fi
 

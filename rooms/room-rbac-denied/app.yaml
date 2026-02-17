@@ -10,8 +10,8 @@ metadata:
     app.kubernetes.io/part-of: K8sEscapeRoom
     k8sescaperoom.dev/room: room-rbac-denied
 ---
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: escape-app
   labels:
@@ -25,42 +25,50 @@ metadata:
   annotations:
     k8sescaperoom.dev/description: "ServiceAccount lacks RBAC permissions for K8s API access"
 spec:
-  serviceAccountName: escape-sa
-  restartPolicy: OnFailure
-  containers:
-    - name: app
-      image: bitnami/kubectl:latest
-      command:
-        - /bin/sh
-        - -c
-        - |
-          echo "================================================"
-          echo "Pod Monitor Application Starting..."
-          echo "================================================"
-          echo ""
-          echo "This application monitors pods in the namespace."
-          echo "ServiceAccount: $(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
-          echo ""
-          echo "Attempting to list pods..."
-          echo ""
+  replicas: 1
+  selector:
+    matchLabels:
+      app: escape-app
+  template:
+    metadata:
+      labels:
+        app: escape-app
+    spec:
+      serviceAccountName: escape-sa
+      containers:
+        - name: app
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "================================================"
+              echo "Pod Monitor Application Starting..."
+              echo "================================================"
+              echo ""
+              echo "This application monitors pods in the namespace."
+              echo "ServiceAccount: $(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)"
+              echo ""
+              echo "Attempting to list pods..."
+              echo ""
 
-          if kubectl get pods 2>&1; then
-            echo ""
-            echo "SUCCESS: Pod listing completed!"
-            echo "Application running normally."
-            # Keep running on success
-            sleep 3600
-          else
-            echo ""
-            echo "FAILED: Permission denied!"
-            echo "The ServiceAccount does not have permission to list pods."
-            echo "Check RBAC configuration."
-            exit 1
-          fi
-      resources:
-        requests:
-          memory: "64Mi"
-          cpu: "10m"
-        limits:
-          memory: "128Mi"
-          cpu: "100m"
+              if kubectl get pods 2>&1; then
+                echo ""
+                echo "SUCCESS: Pod listing completed!"
+                echo "Application running normally."
+                # Keep running on success
+                sleep 3600
+              else
+                echo ""
+                echo "FAILED: Permission denied!"
+                echo "The ServiceAccount does not have permission to list pods."
+                echo "Check RBAC configuration."
+                exit 1
+              fi
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "10m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"

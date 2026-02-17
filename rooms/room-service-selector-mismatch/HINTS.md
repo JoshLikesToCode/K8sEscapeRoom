@@ -44,23 +44,17 @@ This is a common typo that's easy to miss:
 
 ## Hint Level 4: How to Fix
 
-You can fix this by editing either the Service selector OR the Pod labels. Editing the Service is usually easier.
+Edit the Service to fix the selector typo:
 
-### Option A: Fix the Service selector
-```bash
-kubectl patch svc escape-service -n escape-room-service-selector-mismatch \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/selector/app", "value": "escape-app"}]'
-```
-
-### Option B: Edit the Service directly
 ```bash
 kubectl edit svc escape-service -n escape-room-service-selector-mismatch
 # Change: app: escapeapp
 # To:     app: escape-app
 ```
 
-After fixing, verify endpoints appear:
+After saving, verify endpoints appear:
 ```bash
 kubectl get endpoints escape-service -n escape-room-service-selector-mismatch
 ```
+
+See SOLUTION.md for alternative approaches.

@@ -4,7 +4,8 @@
 # Expected state: Pod in CrashLoopBackOff due to missing DATABASE_URL env var
 #
 # Success criteria:
-#   - Pod exists
+#   - Deployment exists
+#   - Pod exists (via label selector)
 #   - Container is in CrashLoopBackOff OR has restarts > 0
 #   - Logs mention DATABASE_URL
 set -euo pipefail
@@ -14,7 +15,8 @@ source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 
 # Configuration
 NAMESPACE="${NAMESPACE:-escape-room-crashloop-env}"
-POD_NAME="escape-app"
+POD_LABEL="app=escape-app"
+DEPLOYMENT_NAME="escape-app"
 ROOM_NAME="room-crashloop-env"
 
 echo -e "${CYAN}Testing room: ${ROOM_NAME}${NC}"
@@ -23,18 +25,31 @@ echo -e "${DIM}Expected: CrashLoopBackOff (missing DATABASE_URL)${NC}"
 echo ""
 
 # ============================================================================
-# Test 1: Pod exists
+# Test 1: Deployment exists
 # ============================================================================
-test_start "Pod '$POD_NAME' exists"
+test_start "Deployment '$DEPLOYMENT_NAME' exists"
 
-if assert_pod_exists "$POD_NAME" "$NAMESPACE"; then
+if kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" &>/dev/null; then
     test_pass
 else
-    test_fail "Pod '$POD_NAME' does not exist in namespace '$NAMESPACE'"
+    test_fail "Deployment '$DEPLOYMENT_NAME' does not exist in namespace '$NAMESPACE'"
 fi
 
 # ============================================================================
-# Test 2: Pod is in CrashLoopBackOff state
+# Test 2: Pod exists (via label selector)
+# ============================================================================
+test_start "Pod with label '$POD_LABEL' exists"
+
+POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -n "$POD_NAME" ]; then
+    test_pass "$POD_NAME"
+else
+    test_fail "No pod found with label '$POD_LABEL' in namespace '$NAMESPACE'"
+fi
+
+# ============================================================================
+# Test 3: Pod is in CrashLoopBackOff state
 # ============================================================================
 test_start "Container is in CrashLoopBackOff"
 
@@ -67,7 +82,7 @@ else
 fi
 
 # ============================================================================
-# Test 3: Error message mentions DATABASE_URL
+# Test 4: Error message mentions DATABASE_URL
 # ============================================================================
 test_start "Logs mention 'DATABASE_URL'"
 
@@ -79,12 +94,12 @@ else
 fi
 
 # ============================================================================
-# Test 4: Verify the root cause (missing env var)
+# Test 5: Verify the root cause (missing env var)
 # ============================================================================
 test_start "DATABASE_URL env var is NOT set"
 
-env_value=$(kubectl get pod "$POD_NAME" -n "$NAMESPACE" \
-    -o jsonpath='{.spec.containers[0].env[?(@.name=="DATABASE_URL")].value}' 2>/dev/null || echo "")
+env_value=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" \
+    -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="DATABASE_URL")].value}' 2>/dev/null || echo "")
 
 if [ -z "$env_value" ]; then
     test_pass "env var is missing (as expected)"

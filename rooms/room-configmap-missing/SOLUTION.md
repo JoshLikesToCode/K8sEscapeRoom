@@ -34,7 +34,17 @@ kubectl get pod escape-app -n escape-room-configmap-missing -o yaml | grep -A5 e
 
 ## The Fix
 
-### Option 1: Create ConfigMap Imperatively
+Create the missing ConfigMap:
+
+```bash
+kubectl create configmap app-config -n escape-room-configmap-missing
+```
+
+The pod will automatically retry and start once the ConfigMap exists. No delete/recreate needed.
+
+### Best Practice: Populating ConfigMap Values
+
+In production, you'd populate the ConfigMap with the values your application expects. The pod's command references `APP_NAME`, `APP_ENV`, and `LOG_LEVEL`, so a properly configured ConfigMap would look like:
 
 ```bash
 kubectl create configmap app-config \
@@ -44,9 +54,8 @@ kubectl create configmap app-config \
   -n escape-room-configmap-missing
 ```
 
-### Option 2: Create ConfigMap Declaratively
+Or declaratively:
 
-Create a file `configmap.yaml`:
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -57,11 +66,6 @@ data:
   APP_NAME: escape-app
   APP_ENV: production
   LOG_LEVEL: info
-```
-
-Apply it:
-```bash
-kubectl apply -f configmap.yaml
 ```
 
 ## Verification

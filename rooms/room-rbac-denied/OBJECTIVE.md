@@ -10,7 +10,7 @@ The application pod is trying to interact with the Kubernetes API but keeps fail
 
 ## Success Criteria
 
-- The pod `escape-app` shows "SUCCESS: Pod listing completed!" in its logs
+- The pod shows "SUCCESS: Pod listing completed!" in its logs
 - The pod remains in `Running` state (not failing/restarting)
 
 ## Getting Started
@@ -20,7 +20,7 @@ The application pod is trying to interact with the Kubernetes API but keeps fail
 kubectl get pods -n escape-room-rbac-denied
 
 # Check the logs to see what's happening
-kubectl logs escape-app -n escape-room-rbac-denied
+kubectl logs -l app=escape-app -n escape-room-rbac-denied
 ```
 
 ## Namespace

@@ -21,4 +21,10 @@ public interface IProgressStorage
     /// Check if a specific room is completed by a user
     /// </summary>
     Task<bool> IsRoomCompletedAsync(string userId, string roomId);
+
+    /// <summary>
+    /// Reset progress for a specific room (remove completion).
+    /// Idempotent: calling on an incomplete room has no effect.
+    /// </summary>
+    Task ResetRoomProgressAsync(string userId, string roomId);
 }

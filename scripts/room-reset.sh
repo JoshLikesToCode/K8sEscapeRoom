@@ -37,6 +37,11 @@ else
     echo -e "${GREEN}Room '${ROOM_NAME}' was not applied (nothing to reset).${NC}"
 fi
 
+# Run room-specific cleanup for cluster-scoped resources (if present)
+if [ -x "$ROOM_DIR/reset-hook.sh" ]; then
+    "$ROOM_DIR/reset-hook.sh"
+fi
+
 echo ""
 echo "To re-enter the room:"
 echo "  make room-apply ROOM=$ROOM_NAME"

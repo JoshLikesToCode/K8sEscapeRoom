@@ -186,10 +186,10 @@ jobs:
           - room-probe-doom
           - room-rbac-denied
           - room-ingress-misroute
+          - room-pvc-pending
           # Boss rooms (multi-failure)
           - boss-checkout-meltdown
-          - boss-registry-curse
-          - boss-slow-death
+          - boss-security-lockdown
 
     steps:
       - name: Checkout code
@@ -279,13 +279,13 @@ jobs:
               # Pods need to start and probe needs to fail
               sleep 20
               ;;
-            boss-registry-curse)
-              # ImagePullBackOff manifests quickly
-              sleep 15
+            boss-security-lockdown)
+              # CreateContainerConfigError is immediate
+              sleep 10
               ;;
-            boss-slow-death)
-              # Needs OOM and/or probe failures + restarts
-              sleep 25
+            room-pvc-pending)
+              # Pending is immediate, but events take a moment
+              sleep 10
               ;;
             *)
               sleep 15

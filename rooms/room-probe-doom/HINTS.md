@@ -8,7 +8,7 @@ The pod keeps restarting, but not because the application is crashing - Kubernet
 
 Check what's happening:
 ```bash
-kubectl describe pod escape-app -n escape-room-probe-doom
+kubectl describe pod <pod-name> -n escape-room-probe-doom
 kubectl get events -n escape-room-probe-doom --sort-by='.lastTimestamp'
 ```
 
@@ -19,59 +19,46 @@ Look for messages about "unhealthy" or "killing" in the events.
 ## Hint Level 2: What to Look For
 
 Kubernetes uses probes to check if containers are healthy:
-- **Liveness probe**: Is the container alive? If it fails, container is killed and restarted.
-- **Readiness probe**: Is the container ready for traffic? If it fails, pod is removed from service endpoints.
+- **Liveness probe**: Is the container alive? If it fails, the container is killed and restarted.
+- **Readiness probe**: Is the container ready for traffic? If it fails, the pod is removed from service endpoints.
 
-Check the pod's probe configuration:
-```bash
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml | grep -A10 livenessProbe
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml | grep -A10 readinessProbe
+The events should show something like:
+```
+Liveness probe failed: Get "http://...:8080/": dial tcp ...:8080: connect: connection refused
 ```
 
-What endpoint are the probes hitting? Does that endpoint exist?
+"Connection refused" means nothing is listening on that port. Is the probe checking the right port?
 
 ---
 
 ## Hint Level 3: The Problem
 
-The probes are configured to check `/healthz` on port 80:
+Look at the deployment spec — compare `containerPort` with the probe `port`:
+
+```bash
+kubectl get deployment escape-app -n escape-room-probe-doom -o yaml
+```
+
+You'll see the mismatch:
 ```yaml
+ports:
+  - containerPort: 80       # app listens on 80
+...
 livenessProbe:
   httpGet:
-    path: /healthz
-    port: 80
+    path: /
+    port: 8080              # probe checks 8080 — nothing there!
 ```
 
-But nginx doesn't have a `/healthz` endpoint by default! It returns 404, which counts as a probe failure.
-
-Test it yourself (if the pod is momentarily up):
-```bash
-kubectl exec escape-app -n escape-room-probe-doom -- curl -s localhost/healthz
-# Returns 404 Not Found
-```
+The probe is checking a port that nothing is listening on.
 
 ---
 
 ## Hint Level 4: How to Fix
 
-You have two valid approaches:
+Edit the deployment to fix the probe ports. Since this is a Deployment, Kubernetes will automatically roll out a new pod with the corrected config:
 
-1. **Fix the probe path** - Change it to hit an endpoint that exists (e.g., `/` for nginx)
-2. **Remove the probe** - If the app doesn't have a health endpoint, removing the liveness probe is valid (though not recommended for production)
-
-For this room, either approach will work. Let's focus on fixing the path:
-
-### Option A: Patch the pod (requires delete/recreate)
-Since you can't change probes on a running pod, you need to:
-1. Get the pod YAML: `kubectl get pod escape-app -n escape-room-probe-doom -o yaml > pod.yaml`
-2. Edit the probe paths from `/healthz` to `/`
-3. Delete and recreate: `kubectl delete pod escape-app -n escape-room-probe-doom && kubectl apply -f pod.yaml`
-
-### Option B: Edit and replace
 ```bash
-kubectl get pod escape-app -n escape-room-probe-doom -o yaml | \
-  sed 's|/healthz|/|g' | \
-  kubectl replace --force -f -
+kubectl edit deployment escape-app -n escape-room-probe-doom
+# Change port: 8080 to port: 80 in both the liveness and readiness probes, then save
 ```
-
-After fixing, the pod should stabilize with 0 new restarts.
