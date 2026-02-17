@@ -56,8 +56,6 @@ fi
 # ============================================================================
 test_start "FAILURE: Pod is NOT Running and Ready"
 
-POD_NAME=$(kubectl get pods -n "$NAMESPACE" -l "$POD_LABEL" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-
 # Give the pod a moment to reach its error state
 sleep 3
 
