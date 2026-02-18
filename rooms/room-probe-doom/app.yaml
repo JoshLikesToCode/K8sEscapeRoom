@@ -15,7 +15,7 @@ metadata:
     k8sescaperoom.dev/difficulty: intermediate
     k8sescaperoom.dev/failure-mode: CrashLoopBackOff
   annotations:
-    k8sescaperoom.dev/description: "Liveness probe fails causing constant restarts"
+    k8sescaperoom.dev/description: "The Health Inspector. The pod starts up but Kubernetes keeps killing it"
 spec:
   replicas: 1
   selector:

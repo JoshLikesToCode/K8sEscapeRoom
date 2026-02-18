@@ -164,7 +164,7 @@ jobs:
           ```
 
           ### What's New
-          See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          See the [release history](https://github.com/${{ github.repository }}/releases) for details.
           EOF
 
       - name: Create GitHub Release

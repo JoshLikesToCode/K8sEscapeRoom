@@ -16,7 +16,7 @@ metadata:
     k8sescaperoom.dev/difficulty: intermediate
     k8sescaperoom.dev/failure-mode: Pending
   annotations:
-    k8sescaperoom.dev/description: "StatefulSet stuck Pending due to missing StorageClass"
+    k8sescaperoom.dev/description: "No Vacancy. The pod is waiting for something the cluster doesn't have"
 spec:
   serviceName: escape-app-headless
   replicas: 1

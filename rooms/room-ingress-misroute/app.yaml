@@ -14,7 +14,7 @@ metadata:
     k8sescaperoom.dev/difficulty: intermediate
     k8sescaperoom.dev/failure-mode: IngressMisconfigured
   annotations:
-    k8sescaperoom.dev/description: "Ingress routing is misconfigured - returns 404"
+    k8sescaperoom.dev/description: "Bad Gateway. Everything looks healthy but requests aren't making it to the app"
 spec:
   replicas: 1
   selector:

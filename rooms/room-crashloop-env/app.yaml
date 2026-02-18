@@ -35,7 +35,7 @@ metadata:
     k8sescaperoom.dev/difficulty: beginner
     k8sescaperoom.dev/failure-mode: CrashLoopBackOff
   annotations:
-    k8sescaperoom.dev/description: "Pod crashes due to missing environment variable"
+    k8sescaperoom.dev/description: "Groundhog Deploy. The app keeps crashing on startup and nothing seems to change"
 spec:
   replicas: 1
   selector:

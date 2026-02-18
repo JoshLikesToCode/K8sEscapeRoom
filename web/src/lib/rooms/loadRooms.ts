@@ -217,10 +217,15 @@ function loadRoom(roomsDir: string, folderId: string): Room | null {
 
   const isBoss = folderId.startsWith('boss-')
 
-  // Generate title from description or folder name
-  const title = metadata.description
-    ? metadata.description.split('.')[0] // Use first sentence of description
+  // Generate title and description from annotation or folder name
+  // Format: "Title. Description text here"
+  const descriptionParts = metadata.description?.split('.') || []
+  const title = descriptionParts.length > 1
+    ? descriptionParts[0]
     : folderToTitle(folderId)
+  const description = descriptionParts.length > 1
+    ? descriptionParts.slice(1).join('.').trim()
+    : metadata.description || `Debug a ${metadata.failureMode} failure`
 
   // Log warnings in debug mode
   if (warnings.length > 0) {
@@ -230,7 +235,7 @@ function loadRoom(roomsDir: string, folderId: string): Room | null {
   return {
     id: folderId,
     title,
-    description: metadata.description || `Debug a ${metadata.failureMode} failure`,
+    description,
     difficulty: metadata.difficulty,
     failureMode: metadata.failureMode,
     isBoss,

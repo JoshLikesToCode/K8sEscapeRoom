@@ -24,8 +24,7 @@ public class RoomIdValidatorTests
 
     [Theory]
     [InlineData("boss-checkout-meltdown")]
-    [InlineData("boss-registry-curse")]
-    [InlineData("boss-slow-death")]
+    [InlineData("boss-security-lockdown")]
     [InlineData("boss-a")]
     [InlineData("boss-123")]
     public void IsValid_ValidBossId_ReturnsTrue(string roomId)

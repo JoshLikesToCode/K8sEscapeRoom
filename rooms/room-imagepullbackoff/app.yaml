@@ -14,7 +14,7 @@ metadata:
     k8sescaperoom.dev/difficulty: beginner
     k8sescaperoom.dev/failure-mode: ImagePullBackOff
   annotations:
-    k8sescaperoom.dev/description: "Pod cannot pull image due to invalid tag"
+    k8sescaperoom.dev/description: "404: Room Not Found. The container never even starts — something is missing before it can run"
 spec:
   containers:
     - name: app

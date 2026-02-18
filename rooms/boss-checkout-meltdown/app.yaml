@@ -17,7 +17,7 @@ metadata:
     k8sescaperoom.dev/difficulty: advanced
     k8sescaperoom.dev/failure-mode: MultipleFailures
   annotations:
-    k8sescaperoom.dev/description: "Service selector mismatch + readiness probe on wrong port"
+    k8sescaperoom.dev/description: "Checkout Meltdown. Multiple things are broken and fixing one reveals the next"
 spec:
   replicas: 2
   selector:

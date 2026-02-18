@@ -14,7 +14,7 @@ metadata:
     k8sescaperoom.dev/difficulty: intermediate
     k8sescaperoom.dev/failure-mode: NoEndpoints
   annotations:
-    k8sescaperoom.dev/description: "Service selector doesn't match pod labels - no endpoints"
+    k8sescaperoom.dev/description: "Out of Service. The app is running fine but traffic never reaches it"
 spec:
   replicas: 1
   selector:

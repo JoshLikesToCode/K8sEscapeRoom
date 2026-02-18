@@ -60,7 +60,7 @@ metadata:
     k8sescaperoom.dev/difficulty: advanced
     k8sescaperoom.dev/failure-mode: MultipleFailures
   annotations:
-    k8sescaperoom.dev/description: "Pod blocked by security context + read-only filesystem"
+    k8sescaperoom.dev/description: "Overzealous Warden. Someone hardened this pod and now it won't start — fix it without loosening security"
 spec:
   replicas: 1
   selector:

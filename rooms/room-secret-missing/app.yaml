@@ -36,7 +36,7 @@ metadata:
     k8sescaperoom.dev/difficulty: intermediate
     k8sescaperoom.dev/failure-mode: CreateContainerConfigError
   annotations:
-    k8sescaperoom.dev/description: "Pod fails to start because it references a non-existent Secret"
+    k8sescaperoom.dev/description: "The Vault is Empty. The pod is looking for something that should exist but doesn't"
 spec:
   containers:
     - name: app

@@ -14,7 +14,7 @@ metadata:
     k8sescaperoom.dev/difficulty: beginner
     k8sescaperoom.dev/failure-mode: Pending
   annotations:
-    k8sescaperoom.dev/description: "Pod stuck pending due to excessive resource requests"
+    k8sescaperoom.dev/description: "Room Full. The pod is waiting in line but never gets scheduled"
 spec:
   containers:
     - name: app
