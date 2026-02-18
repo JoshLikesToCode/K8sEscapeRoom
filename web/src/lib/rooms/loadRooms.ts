@@ -1,35 +1,16 @@
 /**
  * Server-side room loader
  *
- * Scans the /rooms directory and parses room metadata from app.yaml and markdown files.
+ * Loads room data from the pre-generated rooms.json (built by scripts/generate-rooms.ts).
  * This module runs only on the server (RSC / build time).
  */
 
 import { cache } from 'react'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as yaml from 'yaml'
-import type { Room, RoomMetadata, Difficulty } from './types'
-
-/** Debug logging - only in dev or when DEBUG_ROOMS=1 */
-const DEBUG = process.env.DEBUG_ROOMS === '1' || process.env.NODE_ENV !== 'production'
-
-function debugLog(...args: unknown[]) {
-  if (DEBUG) {
-    console.log('[rooms]', ...args)
-  }
-}
-
-function debugWarn(...args: unknown[]) {
-  if (DEBUG) {
-    console.warn('[rooms]', ...args)
-  }
-}
-
-/** Max directory levels to search upward for repo root */
-const MAX_SEARCH_DEPTH = 10
+import type { Room } from './types'
+import roomsData from '@/generated/rooms.json'
 
 /**
+<<<<<<< Updated upstream
  * Find the repository root by walking upward from cwd.
  * Repo root is identified by having both 'rooms/' directory and 'Makefile'.
  */
@@ -250,63 +231,13 @@ function loadRoom(roomsDir: string, folderId: string): Room | null {
 /**
  * Load all rooms from the /rooms directory.
  * Cached using React's cache() to avoid re-scanning on every request.
+=======
+ * Load all rooms from the pre-generated JSON.
+ * Cached using React's cache() to avoid re-parsing on every request.
+>>>>>>> Stashed changes
  */
 export const loadAllRooms = cache(async (): Promise<Room[]> => {
-  const roomsDir = getRoomsDir()
-
-  debugLog(`Scanning rooms directory: ${roomsDir}`)
-
-  let entries: string[]
-  try {
-    entries = fs.readdirSync(roomsDir)
-  } catch (err) {
-    debugWarn('Failed to read rooms directory:', err)
-    return []
-  }
-
-  // Filter to room- and boss- prefixed folders
-  const roomFolders = entries.filter(
-    (name) => name.startsWith('room-') || name.startsWith('boss-')
-  )
-
-  debugLog(`Found ${roomFolders.length} room folders`)
-
-  // Load each room
-  const rooms: Room[] = []
-  for (const folder of roomFolders) {
-    const room = loadRoom(roomsDir, folder)
-    if (room) {
-      rooms.push(room)
-    }
-  }
-
-  // Difficulty sort order: beginner first, then intermediate, then advanced, then unknown
-  const difficultyOrder: Record<string, number> = {
-    beginner: 0,
-    intermediate: 1,
-    advanced: 2,
-    unknown: 3,
-  }
-
-  // Sort: regular rooms first (by difficulty, then alphabetically), then boss rooms (alphabetically)
-  rooms.sort((a, b) => {
-    // Boss rooms always come after regular rooms
-    if (a.isBoss !== b.isBoss) {
-      return a.isBoss ? 1 : -1
-    }
-    // For regular rooms, sort by difficulty first
-    if (!a.isBoss && !b.isBoss) {
-      const diffA = difficultyOrder[a.difficulty] ?? 3
-      const diffB = difficultyOrder[b.difficulty] ?? 3
-      if (diffA !== diffB) {
-        return diffA - diffB
-      }
-    }
-    // Then sort alphabetically within the same difficulty/boss group
-    return a.id.localeCompare(b.id)
-  })
-
-  return rooms
+  return roomsData as Room[]
 })
 
 /**
