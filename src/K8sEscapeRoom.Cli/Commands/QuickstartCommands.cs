@@ -8,7 +8,7 @@ namespace K8sEscapeRoom.Cli.Commands;
 /// </summary>
 public static class QuickstartCommands
 {
-    private const string TutorialRoom = "room-crashloop-env";
+    private const string TutorialRoom = "room-groundhog-deploy";
 
     /// <summary>
     /// escape quickstart → Run the quickstart tutorial

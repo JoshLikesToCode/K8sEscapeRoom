@@ -7,7 +7,7 @@
 This API provides backend services for the hosted web experience:
 - User authentication (via Azure Static Web Apps EasyAuth)
 - Progress tracking (Azure Table Storage)
-- Proof token validation (coming soon)
+- Proof token validation
 
 **Important:** This API never receives kubeconfigs or cluster access.
 It only validates proof tokens that users generate locally.

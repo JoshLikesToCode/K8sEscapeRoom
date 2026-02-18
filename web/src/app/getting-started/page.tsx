@@ -47,7 +47,7 @@ export default function GettingStartedPage() {
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t border-gray-800">
-          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+          <div className="grid md:grid-cols-2 gap-8 text-center md:text-left max-w-2xl mx-auto">
             <div>
               <h3 className="text-white font-semibold mb-2">Need Help?</h3>
               <p className="text-gray-500 text-sm">
@@ -62,14 +62,6 @@ export default function GettingStartedPage() {
                   className="text-k8s-blue hover:underline"
                 >
                   Open an issue on GitHub
-                </a>
-              </p>
-            </div>
-            <div>
-              <h3 className="text-white font-semibold mb-2">Documentation</h3>
-              <p className="text-gray-500 text-sm">
-                <a href="/docs" className="text-k8s-blue hover:underline">
-                  Read the full docs
                 </a>
               </p>
             </div>

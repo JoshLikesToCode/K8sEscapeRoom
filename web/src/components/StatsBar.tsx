@@ -5,13 +5,14 @@ import { useAuth, useProgress } from '@/lib/auth'
 interface StatsBarProps {
   totalRooms: number
   bossRoomCount: number
+  roomIds: string[]
 }
 
-export function StatsBar({ totalRooms, bossRoomCount }: StatsBarProps) {
+export function StatsBar({ totalRooms, bossRoomCount, roomIds }: StatsBarProps) {
   const { isAuthenticated } = useAuth()
   const { completedRooms, isLoading } = useProgress()
 
-  const completedCount = completedRooms.size
+  const completedCount = roomIds.filter((id) => completedRooms.has(id)).length
 
   return (
     <div className="flex items-center gap-6 mb-8 p-4 bg-gray-900 rounded-xl border border-gray-800">

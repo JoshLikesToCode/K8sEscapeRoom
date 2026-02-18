@@ -120,7 +120,7 @@ if [ -z "$ROOM_NAME" ]; then
     echo "Usage: $0 <room-name>"
     echo ""
     echo "Example:"
-    echo "  $0 room-crashloop-env"
+    echo "  $0 room-groundhog-deploy"
     exit 1
 fi
 

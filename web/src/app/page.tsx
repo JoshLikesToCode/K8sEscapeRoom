@@ -78,7 +78,7 @@ export default function Home() {
             <Feature
               icon="🏆"
               title="Track Progress"
-              description="Complete rooms, earn achievements, climb the leaderboard."
+              description="Complete rooms and track which challenges you've conquered."
             />
           </div>
         </div>

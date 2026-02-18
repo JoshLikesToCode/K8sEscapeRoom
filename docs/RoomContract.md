@@ -31,12 +31,12 @@ This creates the directory structure with templates that you customize.
 ### Room Names
 - Format: `room-<descriptive-name>`
 - Use lowercase with hyphens
-- Examples: `room-crashloop-env`, `room-imagepullbackoff`, `room-pending-resources`
+- Examples: `room-groundhog-deploy`, `room-404-not-found`, `room-full`
 
 ### Namespaces
 - Format: `escape-<room-name>`
 - Each room runs in its own namespace
-- Example: Room `room-crashloop-env` → Namespace `escape-room-crashloop-env`
+- Example: Room `room-groundhog-deploy` → Namespace `escape-room-groundhog-deploy`
 
 ### Resource Names
 - Primary pod/deployment: `escape-app`

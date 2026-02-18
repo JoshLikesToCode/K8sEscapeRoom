@@ -1,4 +1,4 @@
-# INCIDENT: Checkout Meltdown
+# INCIDENT: Checkout Meltdown (Boss Room)
 
 **Severity:** P1 - Revenue Impact
 **Reported:** 14:32 UTC

@@ -31,7 +31,7 @@ export default async function PlayPage() {
       </div>
 
       {/* Stats Bar - client component for live progress */}
-      <StatsBar totalRooms={levels.length} bossRoomCount={bossRooms.length} />
+      <StatsBar totalRooms={levels.length} bossRoomCount={bossRooms.length} roomIds={levels.map((l) => l.id)} />
 
       {/* Regular Rooms */}
       {regularRooms.length > 0 && (

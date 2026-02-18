@@ -8,10 +8,10 @@ using Microsoft.Azure.Functions.Worker;
 namespace K8sEscapeRoom.Api.Functions;
 
 /// <summary>
-/// POST /api/rooms/{roomId}/complete - Mark a room as completed
+/// POST /api/rooms/{roomId}/complete - Mark a room as completed (dev/testing only)
 ///
-/// TEMPORARY: This is a placeholder until proof submission is implemented.
-/// In the future, completion will require cryptographic proof from the cluster.
+/// DEPRECATED: Use the proof submission flow (StartAttempt + SubmitProof) instead.
+/// This endpoint bypasses proof verification and exists only for development convenience.
 /// </summary>
 public class CompleteRoom
 {

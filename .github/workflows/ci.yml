@@ -176,20 +176,20 @@ jobs:
       matrix:
         room:
           # Beginner rooms
-          - room-crashloop-env
-          - room-imagepullbackoff
-          - room-pending-resources
+          - room-groundhog-deploy
+          - room-404-not-found
+          - room-full
           # Intermediate rooms
-          - room-configmap-missing
-          - room-secret-missing
-          - room-service-selector-mismatch
-          - room-probe-doom
-          - room-rbac-denied
-          - room-ingress-misroute
-          - room-pvc-pending
+          - room-uncharted-config
+          - room-vault-empty
+          - room-out-of-service
+          - room-health-inspector
+          - room-access-denied
+          - room-bad-gateway
+          - room-no-vacancy
           # Boss rooms (multi-failure)
           - boss-checkout-meltdown
-          - boss-security-lockdown
+          - boss-overzealous-warden
 
     steps:
       - name: Checkout code
@@ -216,7 +216,7 @@ jobs:
           kubectl get nodes -o wide
 
       - name: Install ingress controller (ingress rooms only)
-        if: matrix.room == 'room-ingress-misroute'
+        if: matrix.room == 'room-bad-gateway'
         run: |
           echo "Installing nginx ingress controller for ingress room..."
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
@@ -239,39 +239,39 @@ jobs:
           echo "Waiting for pod to enter expected failure state..."
           # Different rooms need different wait times
           case "${{ matrix.room }}" in
-            room-crashloop-env)
+            room-groundhog-deploy)
               # CrashLoopBackOff needs time for container to crash and restart
               sleep 20
               ;;
-            room-imagepullbackoff)
+            room-404-not-found)
               # ImagePullBackOff manifests quickly
               sleep 15
               ;;
-            room-pending-resources)
+            room-full)
               # Pending is immediate, but events take a moment
               sleep 10
               ;;
-            room-configmap-missing)
+            room-uncharted-config)
               # CreateContainerConfigError is immediate
               sleep 10
               ;;
-            room-secret-missing)
+            room-vault-empty)
               # CreateContainerConfigError is immediate
               sleep 10
               ;;
-            room-service-selector-mismatch)
+            room-out-of-service)
               # Need pod to be running first
               sleep 15
               ;;
-            room-probe-doom)
+            room-health-inspector)
               # Needs probe failures and restarts
               sleep 20
               ;;
-            room-rbac-denied)
+            room-access-denied)
               # Pod runs and fails quickly
               sleep 15
               ;;
-            room-ingress-misroute)
+            room-bad-gateway)
               # Needs deployment + service ready
               sleep 20
               ;;
@@ -279,11 +279,11 @@ jobs:
               # Pods need to start and probe needs to fail
               sleep 20
               ;;
-            boss-security-lockdown)
+            boss-overzealous-warden)
               # CreateContainerConfigError is immediate
               sleep 10
               ;;
-            room-pvc-pending)
+            room-no-vacancy)
               # Pending is immediate, but events take a moment
               sleep 10
               ;;

@@ -5,7 +5,7 @@
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced' | 'unknown'
 
 export interface Room {
-  /** Folder name (e.g., "room-crashloop-env") */
+  /** Folder name (e.g., "room-groundhog-deploy") */
   id: string
 
   /** Human-friendly title derived from description or folder name */
