@@ -21,7 +21,7 @@ public class TableKeyNormalizerTests
 
     [Theory]
     [InlineData("simple", "simple")]
-    [InlineData("room-crashloop-env", "room-crashloop-env")]
+    [InlineData("room-groundhog-deploy", "room-groundhog-deploy")]
     [InlineData("boss-checkout-meltdown", "boss-checkout-meltdown")]
     public void NormalizeRoomId_NoSpecialChars_ReturnsUnchanged(string input, string expected)
     {

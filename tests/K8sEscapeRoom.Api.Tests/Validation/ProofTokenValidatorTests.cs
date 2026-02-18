@@ -13,7 +13,7 @@ public class ProofTokenValidatorTests
     public void Parse_ValidToken_ReturnsSuccess()
     {
         // Arrange
-        var roomId = "room-crashloop-env";
+        var roomId = "room-groundhog-deploy";
         var nonce = "abc123";
         var timestamp = 1704067200L; // 2024-01-01 00:00:00 UTC
         var hash = ProofTokenValidator.ComputeHash(roomId, nonce, timestamp);
@@ -155,7 +155,7 @@ public class ProofTokenValidatorTests
     [Fact]
     public void ComputeHash_SameInput_ReturnsSameHash()
     {
-        var roomId = "room-crashloop-env";
+        var roomId = "room-groundhog-deploy";
         var nonce = "xyz789";
         var timestamp = 1704067200L;
 
@@ -184,7 +184,7 @@ public class ProofTokenValidatorTests
     [Fact]
     public void ValidateHash_CorrectHash_ReturnsTrue()
     {
-        var roomId = "room-crashloop-env";
+        var roomId = "room-groundhog-deploy";
         var nonce = "test-nonce";
         var timestamp = 1704067200L;
         var hash = ProofTokenValidator.ComputeHash(roomId, nonce, timestamp);
@@ -197,7 +197,7 @@ public class ProofTokenValidatorTests
     [Fact]
     public void ValidateHash_IncorrectHash_ReturnsFalse()
     {
-        var roomId = "room-crashloop-env";
+        var roomId = "room-groundhog-deploy";
         var nonce = "test-nonce";
         var timestamp = 1704067200L;
         var wrongHash = new string('0', 64);

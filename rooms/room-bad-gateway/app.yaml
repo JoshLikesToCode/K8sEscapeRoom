@@ -1,0 +1,83 @@
+# Room: Ingress Misroute
+# Ingress path is misconfigured - traffic goes to 404
+# The deployment and service work fine, but the Ingress routing is wrong
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: escape-app
+  labels:
+    app: escape-app
+    app.kubernetes.io/name: escape-app
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    app.kubernetes.io/component: challenge
+    k8sescaperoom.dev/room: room-bad-gateway
+    k8sescaperoom.dev/difficulty: intermediate
+    k8sescaperoom.dev/failure-mode: IngressMisconfigured
+  annotations:
+    k8sescaperoom.dev/description: "Bad Gateway. Everything looks healthy but requests aren't making it to the app"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: escape-app
+  template:
+    metadata:
+      labels:
+        app: escape-app
+    spec:
+      containers:
+        - name: app
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: escape-service
+  labels:
+    app.kubernetes.io/name: escape-service
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    k8sescaperoom.dev/room: room-bad-gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: escape-app
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: escape-ingress
+  labels:
+    app.kubernetes.io/name: escape-ingress
+    app.kubernetes.io/part-of: K8sEscapeRoom
+    k8sescaperoom.dev/room: room-bad-gateway
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: escape.local
+      http:
+        paths:
+          # BUG: Path is /api but nginx serves at /
+          # With rewrite-target: /, requests to /api get rewritten to /
+          # But the service name is wrong! It's "escape-svc" not "escape-service"
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: escape-svc
+                port:
+                  number: 80

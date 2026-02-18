@@ -68,7 +68,7 @@ To verify room completion, users generate **proof tokens** locally:
 
 ```bash
 # User runs escape verification locally
-make room-verify ROOM=room-crashloop-env
+make room-verify ROOM=room-groundhog-deploy
 
 # On success, a proof token is displayed
 # ✓ Room escaped! Proof token: eyJ0eXAi...
@@ -128,7 +128,7 @@ Deployed to: Azure Functions
 2. User sees objective and hints
 3. User runs locally:
    ```bash
-   make room-apply ROOM=room-crashloop-env
+   make room-apply ROOM=room-groundhog-deploy
    ```
 4. Web app has no involvement in cluster changes
 
@@ -137,7 +137,7 @@ Deployed to: Azure Functions
 1. User debugs and fixes the room locally
 2. User verifies escape:
    ```bash
-   make room-verify ROOM=room-crashloop-env
+   make room-verify ROOM=room-groundhog-deploy
    ```
 3. CLI generates proof token locally
 4. User copies token to web app
@@ -147,7 +147,7 @@ Deployed to: Azure Functions
 
 ```json
 {
-  "room": "room-crashloop-env",
+  "room": "room-groundhog-deploy",
   "timestamp": "2025-02-05T12:00:00Z",
   "checksum": "sha256:abc123...",
   "signature": "..."

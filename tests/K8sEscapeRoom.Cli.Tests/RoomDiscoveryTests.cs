@@ -61,9 +61,9 @@ public class RoomDiscoveryTests : IDisposable
         // Arrange
         var roomsDir = Path.Combine(_testDirectory, "rooms");
         Directory.CreateDirectory(roomsDir);
-        Directory.CreateDirectory(Path.Combine(roomsDir, "room-crashloop-env"));
-        Directory.CreateDirectory(Path.Combine(roomsDir, "room-imagepullbackoff"));
-        Directory.CreateDirectory(Path.Combine(roomsDir, "room-pending-resources"));
+        Directory.CreateDirectory(Path.Combine(roomsDir, "room-groundhog-deploy"));
+        Directory.CreateDirectory(Path.Combine(roomsDir, "room-404-not-found"));
+        Directory.CreateDirectory(Path.Combine(roomsDir, "room-full"));
         Directory.CreateDirectory(Path.Combine(roomsDir, "not-a-room")); // Should be excluded
 
         // Act
@@ -71,9 +71,9 @@ public class RoomDiscoveryTests : IDisposable
 
         // Assert
         Assert.Equal(3, rooms.Count);
-        Assert.Contains("room-crashloop-env", rooms);
-        Assert.Contains("room-imagepullbackoff", rooms);
-        Assert.Contains("room-pending-resources", rooms);
+        Assert.Contains("room-groundhog-deploy", rooms);
+        Assert.Contains("room-404-not-found", rooms);
+        Assert.Contains("room-full", rooms);
         Assert.DoesNotContain("not-a-room", rooms);
     }
 

@@ -46,32 +46,32 @@ make cluster-up
 make room-list
 
 # 3. Enter your first escape room
-make room-apply ROOM=room-crashloop-env
+make room-apply ROOM=room-groundhog-deploy
 
 # 4. Investigate!
-kubectl get pods -n escape-room-crashloop-env
-kubectl describe pod escape-app -n escape-room-crashloop-env
-kubectl logs escape-app -n escape-room-crashloop-env
+kubectl get pods -n escape-room-groundhog-deploy
+kubectl describe pod escape-app -n escape-room-groundhog-deploy
+kubectl logs escape-app -n escape-room-groundhog-deploy
 
 # 5. When stuck, get help
-make room-objective ROOM=room-crashloop-env  # What to achieve
-make room-hint ROOM=room-crashloop-env       # Progressive hints
-make room-solution ROOM=room-crashloop-env   # Full solution
+make room-objective ROOM=room-groundhog-deploy  # What to achieve
+make room-hint ROOM=room-groundhog-deploy       # Progressive hints
+make room-solution ROOM=room-groundhog-deploy   # Full solution
 
 # 6. Verify your fix
-make room-escape-test ROOM=room-crashloop-env  # Validates you escaped!
+make room-escape-test ROOM=room-groundhog-deploy  # Validates you escaped!
 
 # 7. Reset and try again (or move to next room)
-make room-reset ROOM=room-crashloop-env
+make room-reset ROOM=room-groundhog-deploy
 ```
 
 ## Available Rooms
 
 | Room | Failure Mode | Difficulty |
 |------|--------------|------------|
-| `room-crashloop-env` | CrashLoopBackOff - Missing environment variable | Beginner |
-| `room-imagepullbackoff` | ImagePullBackOff - Invalid image tag | Beginner |
-| `room-pending-resources` | Pending - Resource requests exceed capacity | Beginner |
+| `room-groundhog-deploy` | CrashLoopBackOff - Missing environment variable | Beginner |
+| `room-404-not-found` | ImagePullBackOff - Invalid image tag | Beginner |
+| `room-full` | Pending - Resource requests exceed capacity | Beginner |
 
 ## Commands Reference
 
@@ -105,7 +105,7 @@ dotnet build src/K8sEscapeRoom.Cli
 # Run via dotnet
 dotnet run --project src/K8sEscapeRoom.Cli -- room list
 dotnet run --project src/K8sEscapeRoom.Cli -- cluster up
-dotnet run --project src/K8sEscapeRoom.Cli -- room apply room-crashloop-env
+dotnet run --project src/K8sEscapeRoom.Cli -- room apply room-groundhog-deploy
 
 # Or install globally
 dotnet tool install --global --add-source ./src/K8sEscapeRoom.Cli K8sEscapeRoom.Cli

@@ -147,7 +147,7 @@ function validateDifficulty(value: string | undefined): Difficulty {
 
 /**
  * Convert folder name to human-friendly title
- * e.g., "room-crashloop-env" -> "Crashloop Env"
+ * e.g., "room-groundhog-deploy" -> "Groundhog Deploy"
  * e.g., "boss-checkout-meltdown" -> "Checkout Meltdown"
  */
 function folderToTitle(folderId: string): string {

@@ -13,7 +13,7 @@ public static partial class RoomIdValidator
 {
     /// <summary>
     /// Pattern: ^(room|boss)-[a-z0-9-]+$
-    /// Examples of valid IDs: room-crashloop-env, boss-checkout-meltdown
+    /// Examples of valid IDs: room-groundhog-deploy, boss-checkout-meltdown
     /// </summary>
     [GeneratedRegex(@"^(room|boss)-[a-z0-9-]+$", RegexOptions.Compiled)]
     private static partial Regex ValidRoomIdPattern();

@@ -70,7 +70,7 @@ public static class RoomCommands
     private static Command CreateApplyCommand(RoomService roomService)
     {
         var command = new Command("apply", "Apply a room's broken state (enter the room)");
-        var roomArg = new Argument<string>("name", "The room name (e.g., room-crashloop-env)");
+        var roomArg = new Argument<string>("name", "The room name (e.g., room-groundhog-deploy)");
         command.AddArgument(roomArg);
 
         command.SetHandler(async (string roomName) =>

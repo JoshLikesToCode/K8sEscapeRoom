@@ -160,7 +160,7 @@ ifndef ROOM
 	@echo "Usage: make <target> ROOM=<room-name>"
 	@echo ""
 	@echo "Example:"
-	@echo "  make room-apply ROOM=room-crashloop-env"
+	@echo "  make room-apply ROOM=room-groundhog-deploy"
 	@echo ""
 	@echo "Run 'make room-list' to see available rooms."
 	@exit 1
@@ -214,8 +214,8 @@ _check-room-files:
 .PHONY: ci-test
 ci-test: tools-check cluster-up
 	@echo -e "$(CYAN)Running CI tests...$(NC)"
-	@./scripts/room-apply.sh room-crashloop-env
-	@./scripts/room-test.sh room-crashloop-env
+	@./scripts/room-apply.sh room-groundhog-deploy
+	@./scripts/room-test.sh room-groundhog-deploy
 	@echo -e "$(GREEN)CI tests passed!$(NC)"
 
 .PHONY: ci-cleanup

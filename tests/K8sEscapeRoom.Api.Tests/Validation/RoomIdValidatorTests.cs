@@ -10,10 +10,10 @@ public class RoomIdValidatorTests
     // ========================================================================
 
     [Theory]
-    [InlineData("room-crashloop-env")]
-    [InlineData("room-imagepullbackoff")]
-    [InlineData("room-pending-resources")]
-    [InlineData("room-probe-doom")]
+    [InlineData("room-groundhog-deploy")]
+    [InlineData("room-404-not-found")]
+    [InlineData("room-full")]
+    [InlineData("room-health-inspector")]
     [InlineData("room-a")]
     [InlineData("room-123")]
     [InlineData("room-test-123-abc")]
@@ -24,7 +24,7 @@ public class RoomIdValidatorTests
 
     [Theory]
     [InlineData("boss-checkout-meltdown")]
-    [InlineData("boss-security-lockdown")]
+    [InlineData("boss-overzealous-warden")]
     [InlineData("boss-a")]
     [InlineData("boss-123")]
     public void IsValid_ValidBossId_ReturnsTrue(string roomId)
