@@ -1,12 +1,12 @@
-# Escape Room: Secret Missing
+# Escape Room: The Vault is Empty
 
-The application pod is stuck and cannot start. The container won't even begin running.
+The application pod is stuck and cannot start. It's looking for something that should exist but doesn't.
 
 ## Your Mission
 
 1. Identify why the pod cannot start
-2. Determine what Kubernetes resource is missing
-3. Create the missing resource so the pod runs successfully
+2. Figure out what it needs
+3. Fix the problem so the pod runs successfully
 
 ## Success Criteria
 
@@ -28,4 +28,4 @@ kubectl get pods -n escape-room-secret-missing
 
 All resources are in the `escape-room-secret-missing` namespace.
 
-Good luck, engineer. The application needs its secrets to start.
+Good luck, engineer. The application won't start without what it's looking for.

@@ -19,7 +19,7 @@ export function Sidebar({ levels }: SidebarProps) {
   const { isAuthenticated } = useAuth()
   const { completedRooms, isLoading: progressLoading } = useProgress()
 
-  const completedCount = completedRooms.size
+  const completedCount = levels.filter((l) => completedRooms.has(l.id)).length
   const totalCount = levels.length
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 

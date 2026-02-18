@@ -1,6 +1,6 @@
-# Escape Room: PVC Pending
+# Escape Room: No Vacancy
 
-The application's StatefulSet pod is stuck in `Pending` state. The previous team migrated these manifests from a cloud cluster, but something about the storage configuration doesn't match this environment.
+The application pod is stuck in `Pending` state. The previous team migrated these manifests from a cloud cluster, but something about this environment doesn't match what the pod expects.
 
 ## Your Mission
 

@@ -1,4 +1,4 @@
-# Hints: ImagePullBackOff - Invalid Image Tag
+# Hints: 404: Room Not Found
 
 Use these hints progressively. Try to solve it yourself first!
 
@@ -32,10 +32,7 @@ Failed to pull image "nginx:latset": rpc error: ... manifest unknown
 
 **Look closely at the image name.** Is there a typo?
 
-```bash
-# Check what image the pod is trying to use
-kubectl get pod escape-app -n escape-room-imagepullbackoff -o jsonpath='{.spec.containers[0].image}'
-```
+The `kubectl describe` output shows the image name near the top under `Containers`. Read it carefully.
 
 ---
 

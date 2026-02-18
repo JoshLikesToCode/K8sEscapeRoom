@@ -1,6 +1,6 @@
-# Escape Room: CrashLoopBackOff - Missing Environment Variable
+# Escape Room: Groundhog Deploy
 
-The application pod is stuck in CrashLoopBackOff and cannot start.
+The application pod keeps crashing on startup and nothing seems to change.
 
 ## Your Mission
 

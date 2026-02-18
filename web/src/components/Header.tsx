@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
-import { UserIcon, ServerIcon } from '@/components/icons'
+import { UserIcon } from '@/components/icons'
 
 export function Header() {
   const { user, isLoading, isAuthenticated, loginUrl, logoutUrl } = useAuth()
@@ -22,12 +22,6 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
-          {/* BYO Cluster badge */}
-          <div className="hidden sm:flex items-center gap-2 text-sm text-gray-400 bg-gray-800/50 px-3 py-1.5 rounded-lg border border-gray-700">
-            <ServerIcon className="h-4 w-4 text-k8s-blue" />
-            <span>BYO Cluster</span>
-          </div>
-
           {/* Auth section */}
           {isLoading ? (
             <div className="flex items-center gap-2">

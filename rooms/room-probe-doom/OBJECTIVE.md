@@ -1,6 +1,6 @@
-# Escape Room: Probe Doom
+# Escape Room: The Health Inspector
 
-The application keeps restarting. It seems to start up fine, but then Kubernetes kills it repeatedly.
+The application starts up fine, but then Kubernetes keeps killing it repeatedly.
 
 ## Your Mission
 

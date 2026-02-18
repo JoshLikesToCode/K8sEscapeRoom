@@ -1,4 +1,4 @@
-# Hints: Checkout Meltdown
+# Hints: Checkout Meltdown (Boss Room)
 
 **Warning:** This is a boss room with MULTIPLE failures. Fixing one problem won't be enough.
 
@@ -29,14 +29,14 @@ The Service can't find any pods to route traffic to. This happens when the Servi
 
 Compare:
 ```bash
-# What label does the Service look for?
-kubectl get svc checkout-service -n escape-boss-checkout-meltdown -o jsonpath='{.spec.selector}'
+# What selector does the Service use?
+kubectl describe svc checkout-service -n escape-boss-checkout-meltdown
 
 # What labels do the pods have?
 kubectl get pods -n escape-boss-checkout-meltdown --show-labels
 ```
 
-Do they match exactly?
+Does the Service `Selector` match the pod labels exactly?
 
 ---
 
@@ -45,15 +45,12 @@ Do they match exactly?
 Even after fixing the selector, pods won't receive traffic if they're not Ready. Check the readiness probe:
 
 ```bash
-kubectl describe pod -l app=checkout-api -n escape-boss-checkout-meltdown | grep -A10 "Readiness:"
+kubectl describe pod -l app=checkout-api -n escape-boss-checkout-meltdown
 ```
 
-The probe is configured to check a specific port. Is that port correct for nginx?
+Scroll to the `Readiness` probe section. What port is it checking? Is that the port nginx actually listens on?
 
-Events will show probe failures:
-```bash
-kubectl get events -n escape-boss-checkout-meltdown | grep -i readiness
-```
+Also check the events at the bottom for probe failure messages.
 
 ---
 

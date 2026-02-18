@@ -1,4 +1,4 @@
-# Hints: Secret Missing
+# Hints: The Vault is Empty
 
 ---
 
@@ -22,10 +22,10 @@ The error message in the events will tell you exactly what's missing. The pod is
 
 Check the pod spec to see what it references:
 ```bash
-kubectl get pod escape-app -n escape-room-secret-missing -o yaml | grep -A10 env:
+kubectl describe pod escape-app -n escape-room-secret-missing
 ```
 
-Look for `valueFrom.secretKeyRef` entries.
+Look at the `Environment` section — it shows where each env var is loaded from.
 
 ---
 

@@ -1,12 +1,12 @@
-# Escape Room: RBAC Denied
+# Escape Room: Access Denied
 
-The application pod is trying to interact with the Kubernetes API but keeps failing with permission errors. The pod runs but the application cannot perform its intended function.
+The application pod runs but crashes when it tries to talk to the cluster. It wants to do something but Kubernetes won't let it.
 
 ## Your Mission
 
 1. Identify what the application is trying to do
-2. Understand why it's being denied
-3. Grant the necessary permissions so the application can function
+2. Understand why it's failing
+3. Fix the configuration so the application can function
 
 ## Success Criteria
 

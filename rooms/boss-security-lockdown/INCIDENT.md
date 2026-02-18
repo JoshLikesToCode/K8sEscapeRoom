@@ -1,4 +1,4 @@
-# INCIDENT: Security Lockdown
+# INCIDENT: Overzealous Warden (Boss Room)
 
 **Severity:** P1 - Application Down
 **Reported:** 09:15 UTC

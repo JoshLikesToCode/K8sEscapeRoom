@@ -1,4 +1,4 @@
-# Hints: Security Lockdown
+# Hints: Overzealous Warden (Boss Room)
 
 **Warning:** This is a boss room with MULTIPLE failures. Fixing one problem will reveal another.
 
@@ -32,9 +32,10 @@ This means:
 You need to tell Kubernetes which non-root user to run as. The `nginx:1.25-alpine` image has a built-in `nginx` user at UID 101.
 
 ```bash
-kubectl get deployment escape-app -n escape-boss-security-lockdown \
-  -o jsonpath='{.spec.template.spec.containers[0].securityContext}'
+kubectl describe deployment escape-app -n escape-boss-security-lockdown
 ```
+
+Look at the `Pod Template` section for the security context settings.
 
 ---
 

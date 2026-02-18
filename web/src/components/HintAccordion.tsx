@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 
 export interface Hint {
   level: number
@@ -74,8 +75,8 @@ export function HintAccordion({ hints }: { hints: Hint[] }) {
               </button>
               {isOpen && isRevealed && (
                 <div className="px-4 pb-4">
-                  <div className="ml-9 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{hint.content}</p>
+                  <div className="ml-9 p-3 bg-gray-800/50 rounded-lg border border-gray-700 text-sm">
+                    <MarkdownRenderer content={hint.content} />
                   </div>
                 </div>
               )}

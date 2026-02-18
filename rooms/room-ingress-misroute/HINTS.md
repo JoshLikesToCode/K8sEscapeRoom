@@ -1,4 +1,4 @@
-# Hints: Ingress Misroute
+# Hints: Bad Gateway
 
 ---
 
@@ -27,10 +27,10 @@ Compare what the Ingress expects to route to versus what actually exists:
 kubectl get svc -n escape-room-ingress-misroute
 
 # What does the Ingress reference?
-kubectl get ingress escape-ingress -n escape-room-ingress-misroute -o yaml | grep -A10 backend
+kubectl describe ingress escape-ingress -n escape-room-ingress-misroute
 ```
 
-Does the service name in the Ingress match an actual service?
+Compare the backend service name in the Ingress to the actual service name. Do they match?
 
 ---
 

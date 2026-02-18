@@ -1,6 +1,6 @@
-# Escape Room: Ingress Misroute
+# Escape Room: Bad Gateway
 
-The application has been deployed with an Ingress for external access, but users report they can't reach the app. The pod and service seem to be working fine internally.
+Everything looks healthy internally, but requests from outside aren't making it to the app. The pod and service seem fine on their own.
 
 ## Prerequisites
 

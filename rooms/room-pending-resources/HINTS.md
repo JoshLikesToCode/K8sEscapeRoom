@@ -1,4 +1,4 @@
-# Hints: Pending - Resource Requests Exceed Capacity
+# Hints: Room Full
 
 Use these hints progressively. Try to solve it yourself first!
 
@@ -34,8 +34,10 @@ This tells you the pod is requesting more resources than any node has available.
 
 **Check what resources the pod is requesting:**
 ```bash
-kubectl get pod escape-app -n escape-room-pending-resources -o jsonpath='{.spec.containers[0].resources}'
+kubectl describe pod escape-app -n escape-room-pending-resources
 ```
+
+Look for the `Requests` section under the container — it shows CPU and memory.
 
 ---
 
@@ -49,8 +51,10 @@ A kind cluster node typically has much less than this available!
 
 **Check what your nodes actually have:**
 ```bash
-kubectl describe nodes | grep -A 5 "Allocatable:"
+kubectl describe node
 ```
+
+Scroll to the `Allocatable` section to see available CPU and memory.
 
 ---
 

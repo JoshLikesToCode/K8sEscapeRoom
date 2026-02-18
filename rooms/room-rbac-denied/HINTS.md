@@ -1,4 +1,4 @@
-# Hints: RBAC Denied
+# Hints: Access Denied
 
 ---
 
@@ -20,10 +20,10 @@ The application is trying to call the Kubernetes API (specifically, to list pods
 
 Check what ServiceAccount the pod is using:
 ```bash
-kubectl get deployment escape-app -n escape-room-rbac-denied -o jsonpath='{.spec.template.spec.serviceAccountName}'
+kubectl describe deployment escape-app -n escape-room-rbac-denied
 ```
 
-Then check what permissions that ServiceAccount has:
+Look for `Service Account` in the output. Then check what permissions that ServiceAccount has:
 ```bash
 kubectl auth can-i list pods --as=system:serviceaccount:escape-room-rbac-denied:escape-sa -n escape-room-rbac-denied
 ```

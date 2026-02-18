@@ -1,4 +1,4 @@
-# Hints: Service Selector Mismatch
+# Hints: Out of Service
 
 ---
 
@@ -25,10 +25,10 @@ Compare these two things:
 kubectl get pods -n escape-room-service-selector-mismatch --show-labels
 
 # What selector does the service use?
-kubectl get svc escape-service -n escape-room-service-selector-mismatch -o yaml | grep -A5 selector
+kubectl describe svc escape-service -n escape-room-service-selector-mismatch
 ```
 
-Do they match exactly?
+Compare the `Selector` field on the service to the pod's labels. Do they match exactly?
 
 ---
 

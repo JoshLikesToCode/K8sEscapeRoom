@@ -1,11 +1,11 @@
-# Escape Room: Service Selector Mismatch
+# Escape Room: Out of Service
 
-The application is running but users report they cannot access it. The Service appears to be configured, but something is wrong.
+The application is running fine but traffic never reaches it. Everything appears to be configured, but something isn't connecting.
 
 ## Your Mission
 
 1. Verify the application pod is running
-2. Investigate why the Service isn't routing traffic to the pod
+2. Investigate why traffic isn't reaching the pod
 3. Fix the networking so the application is accessible
 
 ## Success Criteria

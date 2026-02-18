@@ -1,12 +1,12 @@
-# Escape Room: Pending - Resource Requests Exceed Capacity
+# Escape Room: Room Full
 
-The application pod is stuck in `Pending` state and will not start.
+The application pod is waiting in line but never gets scheduled.
 
 ## Your Mission
 
-1. Identify why the pod cannot be scheduled
-2. Understand the resource constraints
-3. Fix the pod so it can be scheduled and run
+1. Identify why the pod can't be scheduled
+2. Figure out what's blocking it
+3. Fix the configuration so the pod can run
 
 ## Success Criteria
 

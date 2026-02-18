@@ -1,11 +1,11 @@
-# Escape Room: ImagePullBackOff - Invalid Image Tag
+# Escape Room: 404: Room Not Found
 
-The application pod cannot start - it's stuck trying to pull an image.
+The container never even starts — something is missing before it can run.
 
 ## Your Mission
 
-1. Identify why the image cannot be pulled
-2. Determine the correct image specification
+1. Identify why the container can't start
+2. Figure out what's wrong
 3. Fix the pod so it runs successfully
 
 ## Success Criteria

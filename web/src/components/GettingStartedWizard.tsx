@@ -3,12 +3,10 @@
 import { useState } from 'react'
 
 type OS = 'macos' | 'windows' | 'linux'
-type Arch = 'arm64' | 'x64'
-type ClusterType = 'kind' | 'minikube' | 'existing'
+type ClusterType = 'kind' | 'existing'
 
 interface StepConfig {
   os: OS
-  arch?: Arch
   cluster: ClusterType
 }
 
@@ -20,29 +18,20 @@ export function GettingStartedWizard() {
   })
 
   const setOS = (os: OS) => {
-    setConfig((prev) => ({
-      ...prev,
-      os,
-      arch: os === 'macos' ? 'arm64' : 'x64',
-    }))
+    setConfig((prev) => ({ ...prev, os }))
     setStep(2)
-  }
-
-  const setArch = (arch: Arch) => {
-    setConfig((prev) => ({ ...prev, arch }))
-    setStep(3)
   }
 
   const setCluster = (cluster: ClusterType) => {
     setConfig((prev) => ({ ...prev, cluster }))
-    setStep(4)
+    setStep(3)
   }
 
   return (
     <div className="space-y-8">
       {/* Progress */}
       <div className="flex items-center justify-center gap-2">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3].map((s) => (
           <div
             key={s}
             className={`h-2 w-16 rounded-full transition-colors ${
@@ -84,51 +73,15 @@ export function GettingStartedWizard() {
         </div>
       </StepSection>
 
-      {/* Step 2: Architecture (macOS only) */}
-      {config.os === 'macos' && (
-        <StepSection
-          stepNumber={2}
-          title="Select your Mac type"
-          active={step >= 2}
-          completed={step > 2}
-        >
-          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-            <button
-              onClick={() => setArch('arm64')}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                config.arch === 'arm64'
-                  ? 'border-k8s-blue bg-k8s-blue/10'
-                  : 'border-gray-800 hover:border-gray-700'
-              }`}
-            >
-              <div className="text-white font-semibold">Apple Silicon</div>
-              <div className="text-gray-500 text-sm">M1, M2, M3 chips</div>
-            </button>
-            <button
-              onClick={() => setArch('x64')}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                config.arch === 'x64'
-                  ? 'border-k8s-blue bg-k8s-blue/10'
-                  : 'border-gray-800 hover:border-gray-700'
-              }`}
-            >
-              <div className="text-white font-semibold">Intel</div>
-              <div className="text-gray-500 text-sm">Older Macs</div>
-            </button>
-          </div>
-        </StepSection>
-      )}
-
-      {/* Step 2/3: Cluster Selection */}
+      {/* Step 2: Cluster Selection */}
       <StepSection
-        stepNumber={config.os === 'macos' ? 3 : 2}
+        stepNumber={2}
         title="Choose your Kubernetes cluster"
-        active={step >= (config.os === 'macos' ? 3 : 2)}
-        completed={step > (config.os === 'macos' ? 3 : 2)}
+        active={step >= 2}
+        completed={step > 2}
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
           <ClusterButton
-            type="kind"
             label="kind"
             description="Recommended for beginners"
             recommended
@@ -136,14 +89,6 @@ export function GettingStartedWizard() {
             onClick={() => setCluster('kind')}
           />
           <ClusterButton
-            type="minikube"
-            label="minikube"
-            description="Alternative option"
-            selected={config.cluster === 'minikube'}
-            onClick={() => setCluster('minikube')}
-          />
-          <ClusterButton
-            type="existing"
             label="Existing Cluster"
             description="Use your own cluster"
             selected={config.cluster === 'existing'}
@@ -152,11 +97,11 @@ export function GettingStartedWizard() {
         </div>
       </StepSection>
 
-      {/* Step 3/4: Installation Instructions */}
+      {/* Step 3: Installation Instructions */}
       <StepSection
-        stepNumber={config.os === 'macos' ? 4 : 3}
+        stepNumber={3}
         title="Follow these steps"
-        active={step >= 4}
+        active={step >= 3}
         completed={false}
       >
         <InstallationSteps config={config} />
@@ -232,14 +177,12 @@ function OSButton({
 }
 
 function ClusterButton({
-  type,
   label,
   description,
   recommended,
   selected,
   onClick,
 }: {
-  type: ClusterType
   label: string
   description: string
   recommended?: boolean
@@ -267,18 +210,7 @@ function ClusterButton({
 }
 
 function InstallationSteps({ config }: { config: StepConfig }) {
-  const { os, arch, cluster } = config
-
-  // Determine platform string for downloads
-  const platform =
-    os === 'macos'
-      ? arch === 'arm64'
-        ? 'osx-arm64'
-        : 'osx-x64'
-      : os === 'linux'
-      ? 'linux-x64'
-      : 'win-x64'
-
+  const { os, cluster } = config
   const isWindows = os === 'windows'
 
   return (
@@ -321,22 +253,16 @@ function InstallationSteps({ config }: { config: StepConfig }) {
             </CodeBlock>
           </div>
 
-          {/* kind/minikube */}
+          {/* kind */}
           {cluster !== 'existing' && (
             <div>
-              <div className="text-gray-400 text-sm mb-2">{cluster}</div>
+              <div className="text-gray-400 text-sm mb-2">kind</div>
               <CodeBlock>
-                {cluster === 'kind'
-                  ? os === 'macos'
-                    ? 'brew install kind'
-                    : os === 'windows'
-                    ? 'winget install Kubernetes.kind'
-                    : 'go install sigs.k8s.io/kind@latest'
-                  : os === 'macos'
-                  ? 'brew install minikube'
+                {os === 'macos'
+                  ? 'brew install kind'
                   : os === 'windows'
-                  ? 'winget install Kubernetes.minikube'
-                  : 'curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 && sudo install minikube-linux-amd64 /usr/local/bin/minikube'}
+                  ? 'winget install Kubernetes.kind'
+                  : 'go install sigs.k8s.io/kind@latest'}
               </CodeBlock>
             </div>
           )}

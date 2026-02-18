@@ -1,12 +1,12 @@
-# Escape Room: ConfigMap Missing
+# Escape Room: Uncharted Config
 
-The application pod is stuck and cannot start. It's not even attempting to pull the image.
+The application pod is stuck and cannot start. Something it needs was never created.
 
 ## Your Mission
 
 1. Identify why the pod cannot start
-2. Determine what Kubernetes resource is missing
-3. Create the missing resource so the pod runs successfully
+2. Figure out what it needs
+3. Fix the problem so the pod runs successfully
 
 ## Success Criteria
 
