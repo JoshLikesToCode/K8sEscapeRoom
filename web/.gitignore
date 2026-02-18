@@ -8,7 +8,8 @@ node_modules/
 out/
 build/
 dist/
-src/generated/
+src/generated/*
+!src/generated/.gitkeep
 
 # Testing
 coverage/

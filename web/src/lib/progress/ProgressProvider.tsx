@@ -41,6 +41,7 @@ export function ProgressProvider({ children }: ProgressProviderProps) {
   const refresh = useCallback(async () => {
     if (!isAuthenticated) {
       setCompletedRooms(new Set())
+      setIsLoading(false)
       setError(null)
       return
     }
