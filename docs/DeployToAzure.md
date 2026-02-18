@@ -11,7 +11,7 @@ Azure Static Web Apps
 └── Auth (SWA built-in)             ← GitHub OAuth via /.auth/*
 ```
 
-SWA handles routing between the frontend and API automatically. The Next.js API proxy route (`/api/[...path]`) is only used during local development.
+SWA handles routing between the frontend and API automatically in production. Locally, `/api/*` only resolves when you run via SWA CLI (see [Local Development](#local-development-with-swa-cli)). Running `npm run dev` alone will not connect to the API.
 
 ## SWA Build Configuration
 
@@ -39,8 +39,8 @@ Set these in the SWA resource (Settings > Configuration):
 
 `web/staticwebapp.config.json` handles:
 
-- **API access**: `/api/*` requests are routed to the managed Azure Functions backend, open to both anonymous and authenticated users.
 - **Security headers**: `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` on all responses.
+- **MIME types**: `.json` served as `application/json`.
 
 > **No `navigationFallback` needed.** SWA's managed Next.js support handles SSR routing natively — Next.js serves all pages through its own router, so a SPA-style fallback rewrite would interfere. Deep links like `/play/room-crashloop-env` work because Next.js handles them server-side.
 
