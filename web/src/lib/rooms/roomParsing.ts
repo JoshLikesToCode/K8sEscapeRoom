@@ -77,7 +77,7 @@ export function parseAppYaml(yamlContent: string): RoomMetadata {
  * e.g., "boss-checkout-meltdown" -> "Checkout Meltdown"
  */
 export function folderToTitle(folderId: string): string {
-  let name = folderId.replace(/^(room-|boss-)/, '')
+  let name = folderId.replace(/^(room-|boss-|final-)/, '')
 
   return name
     .split('-')
@@ -114,7 +114,8 @@ export function assembleRoom(raw: RawRoomFiles): Room {
     warnings.push('SOLUTION.md not found')
   }
 
-  const isBoss = folderId.startsWith('boss-')
+  const isFinalBoss = folderId.startsWith('final-')
+  const isBoss = folderId.startsWith('boss-') || isFinalBoss
 
   const descriptionParts = metadata.description?.split('.') || []
   const title =
@@ -135,6 +136,7 @@ export function assembleRoom(raw: RawRoomFiles): Room {
     difficulty: metadata.difficulty,
     failureMode: metadata.failureMode,
     isBoss,
+    isFinalBoss,
     namespace: `escape-${folderId}`,
     objectiveMarkdown: objectiveMarkdown || '',
     hintsMarkdown: hintsMarkdown || '',
@@ -155,6 +157,10 @@ export function sortRooms(rooms: Room[]): Room[] {
   }
 
   return [...rooms].sort((a, b) => {
+    // Final boss always sorts last
+    if (a.isFinalBoss !== b.isFinalBoss) {
+      return a.isFinalBoss ? 1 : -1
+    }
     if (a.isBoss !== b.isBoss) {
       return a.isBoss ? 1 : -1
     }

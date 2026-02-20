@@ -35,7 +35,7 @@ function main() {
 
   const entries = fs.readdirSync(ROOMS_DIR)
   const roomFolders = entries.filter(
-    (name) => name.startsWith('room-') || name.startsWith('boss-')
+    (name) => name.startsWith('room-') || name.startsWith('boss-') || name.startsWith('final-')
   )
 
   console.log(`[generate-rooms] Found ${roomFolders.length} room folders`)

@@ -5,17 +5,17 @@ namespace K8sEscapeRoom.Api.Validation;
 /// <summary>
 /// Validates room IDs for the K8s Escape Room API.
 /// Room IDs must:
-/// - Start with "room-" or "boss-"
+/// - Start with "room-", "boss-", or "final-"
 /// - Contain only lowercase letters, digits, and hyphens after the prefix
 /// - Not contain path separators or other special characters
 /// </summary>
 public static partial class RoomIdValidator
 {
     /// <summary>
-    /// Pattern: ^(room|boss)-[a-z0-9-]+$
-    /// Examples of valid IDs: room-groundhog-deploy, boss-checkout-meltdown
+    /// Pattern: ^(room|boss|final)-[a-z0-9-]+$
+    /// Examples of valid IDs: room-groundhog-deploy, boss-checkout-meltdown, final-cascading-outage
     /// </summary>
-    [GeneratedRegex(@"^(room|boss)-[a-z0-9-]+$", RegexOptions.Compiled)]
+    [GeneratedRegex(@"^(room|boss|final)-[a-z0-9-]+$", RegexOptions.Compiled)]
     private static partial Regex ValidRoomIdPattern();
 
     /// <summary>
@@ -42,7 +42,7 @@ public static partial class RoomIdValidator
     /// </summary>
     public static string GetErrorMessage()
     {
-        return "Room ID must start with 'room-' or 'boss-' and contain only lowercase letters, digits, and hyphens";
+        return "Room ID must start with 'room-', 'boss-', or 'final-' and contain only lowercase letters, digits, and hyphens";
     }
 
     /// <summary>
@@ -60,9 +60,9 @@ public static partial class RoomIdValidator
             return "Room ID must not contain path separators";
         }
 
-        if (!roomId.StartsWith("room-") && !roomId.StartsWith("boss-"))
+        if (!roomId.StartsWith("room-") && !roomId.StartsWith("boss-") && !roomId.StartsWith("final-"))
         {
-            return "Room ID must start with 'room-' or 'boss-'";
+            return "Room ID must start with 'room-', 'boss-', or 'final-'";
         }
 
         return "Room ID must contain only lowercase letters, digits, and hyphens after the prefix";

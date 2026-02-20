@@ -9,6 +9,7 @@ export interface Level {
   completed: boolean
   locked?: boolean
   isBoss?: boolean
+  isFinalBoss?: boolean
 }
 
 export function LevelCard({ level }: { level: Level }) {
@@ -35,17 +36,17 @@ export function LevelCard({ level }: { level: Level }) {
 
   return (
     <Link href={`/play/${level.id}`} className="relative group block">
-      <div className="absolute inset-0 bg-gradient-to-r from-k8s-blue/20 to-purple-500/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className={`absolute inset-0 bg-gradient-to-r ${level.isFinalBoss ? 'from-red-500/20 to-orange-500/20' : 'from-k8s-blue/20 to-purple-500/20'} rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity`} />
       <div className="relative bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-k8s-blue/50 transition-colors">
         {/* Icon */}
         <div className="flex items-start justify-between mb-4">
           <div
             className={`
               h-12 w-12 rounded-xl flex items-center justify-center text-lg
-              ${level.completed ? 'bg-terminal-green/20 text-terminal-green' : level.isBoss ? 'bg-purple-500/20 text-purple-400' : 'bg-k8s-blue/20 text-k8s-blue'}
+              ${level.completed ? 'bg-terminal-green/20 text-terminal-green' : level.isFinalBoss ? 'bg-red-500/20 text-red-400' : level.isBoss ? 'bg-purple-500/20 text-purple-400' : 'bg-k8s-blue/20 text-k8s-blue'}
             `}
           >
-            {level.completed ? '✓' : level.isBoss ? '👑' : '🔧'}
+            {level.completed ? '✓' : level.isFinalBoss ? '💀' : level.isBoss ? '👑' : '🔧'}
           </div>
           {level.completed ? <CompletedBadge /> : <DifficultyBadge difficulty={level.difficulty} />}
         </div>
@@ -58,7 +59,7 @@ export function LevelCard({ level }: { level: Level }) {
 
         {/* Tags */}
         <div className="flex items-center gap-2 flex-wrap">
-          {level.isBoss && <BossBadge />}
+          {level.isFinalBoss ? <FinalBossBadge /> : level.isBoss && <BossBadge />}
           <FailureModeBadge mode={level.failureMode} />
         </div>
 
@@ -92,6 +93,14 @@ function BossBadge() {
   return (
     <span className="px-2 py-1 rounded-md text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
       BOSS
+    </span>
+  )
+}
+
+function FinalBossBadge() {
+  return (
+    <span className="px-2 py-1 rounded-md text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+      FINAL BOSS
     </span>
   )
 }

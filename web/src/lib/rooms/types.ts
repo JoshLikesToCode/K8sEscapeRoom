@@ -23,6 +23,9 @@ export interface Room {
   /** Whether this is a boss room (folder starts with "boss-") */
   isBoss: boolean
 
+  /** Whether this is the final boss room (folder starts with "final-") */
+  isFinalBoss: boolean
+
   /** Namespace for the room (escape-{id}) */
   namespace: string
 
