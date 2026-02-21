@@ -16,6 +16,7 @@ source "$SCRIPT_DIR/../../scripts/test-helpers.sh"
 NAMESPACE="${NAMESPACE:-escape-final-cascading-outage}"
 ROOM_NAME="final-cascading-outage"
 
+echo -e "${CYAN}Testing boss room: ${ROOM_NAME}${NC}"
 echo ""
 echo -e "${RED}  _____ ___ _  _   _   _      ___  ___  ___ ___ ${NC}"
 echo -e "${RED} |  ___|_ _| \| | /_\ | |    | _ )/ _ \/ __/ __|${NC}"
