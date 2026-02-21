@@ -225,6 +225,8 @@ jobs:
             --for=condition=ready pod \
             --selector=app.kubernetes.io/component=controller \
             --timeout=90s
+          echo "Removing admission webhook to avoid connection refused errors in CI..."
+          kubectl delete validatingwebhookconfiguration ingress-nginx-admission --ignore-not-found
           echo "Ingress controller ready!"
 
       - name: Apply room ${{ matrix.room }}
