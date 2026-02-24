@@ -81,11 +81,15 @@ export default async function RoomDetailPage({ params }: PageProps) {
               <span className="px-2 py-1 rounded-md text-xs font-mono bg-gray-800 text-terminal-amber border border-gray-700">
                 {room.failureMode}
               </span>
-              {room.isBoss && (
+              {room.isFinalBoss ? (
+                <span className="px-2 py-1 rounded-md text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                  FINAL BOSS
+                </span>
+              ) : room.isBoss ? (
                 <span className="px-2 py-1 rounded-md text-xs font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
                   BOSS
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
           <ResetButton roomId={params.roomId} />

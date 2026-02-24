@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth, useProgress } from '@/lib/auth'
@@ -12,16 +13,24 @@ interface SidebarLevel {
 
 interface SidebarProps {
   levels: SidebarLevel[]
+  finalBossRoomId?: string
 }
 
-export function Sidebar({ levels }: SidebarProps) {
+export function Sidebar({ levels, finalBossRoomId }: SidebarProps) {
   const pathname = usePathname()
   const { isAuthenticated } = useAuth()
-  const { completedRooms, isLoading: progressLoading } = useProgress()
+  const { completedRooms, isLoading: progressLoading, resetRoomProgress } = useProgress()
 
-  const completedCount = levels.filter((l) => completedRooms.has(l.id)).length
-  const totalCount = levels.length
+  const baseCompleted = levels.filter((l) => completedRooms.has(l.id)).length
+  const allBaseComplete = baseCompleted === levels.length && levels.length > 0
+  const finalBossUnlocked = allBaseComplete && finalBossRoomId != null
+  const finalBossCompleted = finalBossRoomId != null && completedRooms.has(finalBossRoomId)
+
+  // Once the final boss is unlocked, include it in totals
+  const totalCount = finalBossUnlocked ? levels.length + 1 : levels.length
+  const completedCount = finalBossUnlocked ? baseCompleted + (finalBossCompleted ? 1 : 0) : baseCompleted
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
+  const allComplete = finalBossCompleted && allBaseComplete
 
   return (
     <aside className="fixed left-0 top-14 bottom-0 w-64 border-r border-gray-800 bg-gray-950 overflow-y-auto">
@@ -49,6 +58,12 @@ export function Sidebar({ levels }: SidebarProps) {
                 <div className="h-3 bg-gray-800 rounded w-12" />
               </div>
             </div>
+          ) : allComplete ? (
+            <AllEscapedState
+              levels={levels}
+              finalBossRoomId={finalBossRoomId}
+              resetRoomProgress={resetRoomProgress}
+            />
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
@@ -117,6 +132,47 @@ export function Sidebar({ levels }: SidebarProps) {
 
       </div>
     </aside>
+  )
+}
+
+function AllEscapedState({
+  levels,
+  finalBossRoomId,
+  resetRoomProgress,
+}: {
+  levels: SidebarLevel[]
+  finalBossRoomId?: string
+  resetRoomProgress: (roomId: string) => Promise<void>
+}) {
+  const [isResetting, setIsResetting] = useState(false)
+
+  const handleResetAll = async () => {
+    if (isResetting) return
+    setIsResetting(true)
+    try {
+      const roomIds = finalBossRoomId ? [...levels.map((l) => l.id), finalBossRoomId] : levels.map((l) => l.id)
+      for (const id of roomIds) {
+        await resetRoomProgress(id)
+      }
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-gray-900 rounded-lg p-4 border border-red-500/30 text-center">
+        <p className="text-2xl font-black text-red-500 tracking-wider">ESCAPED</p>
+        <p className="text-xs text-gray-500 mt-1">{levels.length}/{levels.length} rooms cleared</p>
+      </div>
+      <button
+        onClick={handleResetAll}
+        disabled={isResetting}
+        className="w-full px-3 py-2 text-xs font-mono text-gray-400 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 hover:text-gray-300 transition-colors disabled:opacity-50"
+      >
+        {isResetting ? 'Resetting...' : '$ kubectl delete --all'}
+      </button>
+    </div>
   )
 }
 

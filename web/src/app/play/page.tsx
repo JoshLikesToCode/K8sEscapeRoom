@@ -1,6 +1,7 @@
 import { getAllRooms } from '@/lib/rooms'
 import { LevelCardWithProgress } from '@/components/LevelCardWithProgress'
 import { StatsBar } from '@/components/StatsBar'
+import { FinalBossReveal } from '@/components/FinalBossReveal'
 
 export default async function PlayPage() {
   const rooms = await getAllRooms()
@@ -14,11 +15,16 @@ export default async function PlayPage() {
     failureMode: room.failureMode,
     locked: false,
     isBoss: room.isBoss,
+    isFinalBoss: room.isFinalBoss,
   }))
 
-  // Separate regular rooms and boss rooms for display
+  // Separate regular rooms, boss rooms, and the final boss
+  const finalBossRoom = levels.find((l) => l.isFinalBoss) ?? null
   const regularRooms = levels.filter((l) => !l.isBoss)
-  const bossRooms = levels.filter((l) => l.isBoss)
+  const bossRooms = levels.filter((l) => l.isBoss && !l.isFinalBoss)
+
+  // Rooms shown in stats/progress (excludes hidden final boss)
+  const visibleLevels = levels.filter((l) => !l.isFinalBoss)
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -31,7 +37,7 @@ export default async function PlayPage() {
       </div>
 
       {/* Stats Bar - client component for live progress */}
-      <StatsBar totalRooms={levels.length} bossRoomCount={bossRooms.length} roomIds={levels.map((l) => l.id)} />
+      <StatsBar totalRooms={visibleLevels.length} bossRoomCount={bossRooms.length} roomIds={visibleLevels.map((l) => l.id)} finalBossRoomId={finalBossRoom?.id} />
 
       {/* Regular Rooms */}
       {regularRooms.length > 0 && (
@@ -63,6 +69,14 @@ export default async function PlayPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Final Boss - hidden until all other rooms completed */}
+      {finalBossRoom && (
+        <FinalBossReveal
+          finalBoss={finalBossRoom}
+          requiredRoomIds={visibleLevels.map((l) => l.id)}
+        />
       )}
 
       {/* Empty State */}
