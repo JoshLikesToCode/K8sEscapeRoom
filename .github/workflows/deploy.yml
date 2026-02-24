@@ -56,3 +56,4 @@ jobs:
           api_location: "api/output"
           skip_app_build: true
           skip_api_build: true
+          is_static_export: true
