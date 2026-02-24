@@ -1,8 +1,8 @@
 # Deploy to Azure Static Web Apps
 # Runs on push to main only — does NOT replace CI workflow
 #
-# Builds web (Next.js) and API (Azure Functions) ourselves,
-# then deploys prebuilt artifacts to bypass Oryx's opinionated checks.
+# Builds web (Next.js static export) and API (Azure Functions) ourselves,
+# then deploys prebuilt artifacts.
 name: Deploy
 
 on:
@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Build Web (Next.js) ──────────────────────────────────
+      # ── Build Web (Next.js static export) ────────────────────
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -44,7 +44,7 @@ jobs:
         run: dotnet publish -c Release -o ./output
         working-directory: api
 
-      # ── Deploy prebuilt artifacts to SWA ─────────────────────
+      # ── Deploy to SWA ────────────────────────────────────────
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -52,7 +52,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "web"
-          output_location: ".next"
+          output_location: "out"
           api_location: "api/output"
           skip_app_build: true
           skip_api_build: true
