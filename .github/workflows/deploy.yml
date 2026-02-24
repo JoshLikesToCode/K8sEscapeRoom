@@ -35,7 +35,11 @@ jobs:
         working-directory: web
 
       - name: Verify static export
-        run: test -f web/out/index.html || (echo "ERROR: web/out/index.html not found" && exit 1)
+        run: |
+          if [ ! -f web/out/index.html ]; then
+            echo "ERROR: web/out/index.html not found"
+            exit 1
+          fi
 
       # ── Deploy to SWA ────────────────────────────────────────
       - name: Deploy to Azure Static Web Apps
