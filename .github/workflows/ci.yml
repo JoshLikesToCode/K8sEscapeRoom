@@ -190,6 +190,8 @@ jobs:
           # Boss rooms (multi-failure)
           - boss-checkout-meltdown
           - boss-overzealous-warden
+          # Final boss
+          - final-cascading-outage
 
     steps:
       - name: Checkout code
@@ -220,11 +222,13 @@ jobs:
         run: |
           echo "Installing nginx ingress controller for ingress room..."
           kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-          echo "Waiting for ingress controller to be ready..."
+          echo "Waiting for ingress controller pod to be ready..."
           kubectl wait --namespace ingress-nginx \
             --for=condition=ready pod \
             --selector=app.kubernetes.io/component=controller \
             --timeout=90s
+          echo "Removing admission webhook (not needed for CI testing)..."
+          kubectl delete validatingwebhookconfiguration ingress-nginx-admission || true
           echo "Ingress controller ready!"
 
       - name: Apply room ${{ matrix.room }}
@@ -282,6 +286,10 @@ jobs:
             boss-overzealous-warden)
               # CreateContainerConfigError is immediate
               sleep 10
+              ;;
+            final-cascading-outage)
+              # Multiple tiers need to start and fail
+              sleep 25
               ;;
             room-no-vacancy)
               # Pending is immediate, but events take a moment
