@@ -48,8 +48,5 @@ jobs:
           output_location: "out"
           api_location: "api"
           skip_app_build: true
-<<<<<<< Updated upstream
           skip_api_build: true
           is_static_export: true
-=======
->>>>>>> Stashed changes
