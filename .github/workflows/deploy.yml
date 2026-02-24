@@ -1,8 +1,8 @@
 # Deploy to Azure Static Web Apps
 # Runs on push to main only — does NOT replace CI workflow
 #
-# Builds web (Next.js static export) and API (Azure Functions) ourselves,
-# then deploys prebuilt artifacts.
+# Builds the Next.js static export ourselves, then lets SWA
+# upload the prebuilt output and build the Azure Functions API.
 name: Deploy
 
 on:
@@ -34,15 +34,8 @@ jobs:
         run: npm run build
         working-directory: web
 
-      # ── Build API (Azure Functions .NET 8) ───────────────────
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Publish API
-        run: dotnet publish -c Release -o ./output
-        working-directory: api
+      - name: Verify static export
+        run: test -f web/out/index.html || (echo "ERROR: web/out/index.html not found" && exit 1)
 
       # ── Deploy to SWA ────────────────────────────────────────
       - name: Deploy to Azure Static Web Apps
@@ -53,7 +46,10 @@ jobs:
           action: "upload"
           app_location: "web"
           output_location: "out"
-          api_location: "api/output"
+          api_location: "api"
           skip_app_build: true
+<<<<<<< Updated upstream
           skip_api_build: true
           is_static_export: true
+=======
+>>>>>>> Stashed changes
