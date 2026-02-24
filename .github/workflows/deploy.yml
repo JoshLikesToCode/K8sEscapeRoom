@@ -1,8 +1,8 @@
 # Deploy to Azure Static Web Apps
 # Runs on push to main only — does NOT replace CI workflow
 #
-# Builds the Next.js static export ourselves, then lets SWA
-# upload the prebuilt output and build the Azure Functions API.
+# Builds web (Next.js static export) and API (Azure Functions .NET 8)
+# ourselves, then deploys prebuilt artifacts to SWA.
 name: Deploy
 
 on:
@@ -41,6 +41,30 @@ jobs:
             exit 1
           fi
 
+      # ── Build API (Azure Functions .NET 8) ───────────────────
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore API dependencies
+        run: dotnet restore api/K8sEscapeRoom.Api.csproj
+
+      - name: Publish API
+        run: dotnet publish api/K8sEscapeRoom.Api.csproj -c Release --no-restore -o api/publish
+
+      - name: List API publish output
+        run: ls -la api/publish
+
+      - name: Verify API publish
+        run: |
+          if [ ! -f api/publish/host.json ]; then
+            echo "ERROR: api/publish/host.json not found"
+            echo "Contents of api/publish:"
+            ls -la api/publish || echo "Directory does not exist"
+            exit 1
+          fi
+
       # ── Deploy to SWA ────────────────────────────────────────
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
@@ -48,9 +72,8 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "web"
-          output_location: "out"
-          api_location: "api"
+          app_location: "web/out"
+          output_location: ""
+          api_location: "api/publish"
           skip_app_build: true
           skip_api_build: true
-          is_static_export: true
