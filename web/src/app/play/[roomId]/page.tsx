@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getRoomById } from '@/lib/rooms'
+import { getAllRooms, getRoomById } from '@/lib/rooms'
 import { parseHintsMarkdown } from '@/lib/rooms/parseHints'
 import { CommandPanel, HintAccordion, ProofSubmit, SingleCommand, MarkdownRenderer, ResetButton } from '@/components'
 import {
@@ -10,6 +10,11 @@ import {
   EyeOffIcon,
   ChevronDownIcon,
 } from '@/components/icons'
+
+export async function generateStaticParams() {
+  const rooms = await getAllRooms()
+  return rooms.map((room) => ({ roomId: room.id }))
+}
 
 const difficultyColors: Record<string, string> = {
   beginner: 'bg-green-500/20 text-green-400 border-green-500/30',

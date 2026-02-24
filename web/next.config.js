@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Output standalone build for containerization
-  output: 'standalone',
+  output: 'export',
+  images: { unoptimized: true },
 }
 
 module.exports = nextConfig
